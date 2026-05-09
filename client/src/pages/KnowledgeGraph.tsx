@@ -40,6 +40,8 @@ import {
   ChevronRight,
   EyeOff,
   Eye,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import api from "../api/axios";
 
@@ -614,6 +616,7 @@ export default function KnowledgeGraph() {
   const [selectedNode, setSelectedNode] = useState<FGNode | null>(null);
 
   const [size, setSize] = useState({ w: 800, h: 600 });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [accordion, setAccordion] = useState<Record<string, boolean>>({
@@ -657,9 +660,13 @@ export default function KnowledgeGraph() {
       }
     }
     measure();
+    const raf = requestAnimationFrame(measure);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+    };
+  }, [sidebarCollapsed, viewMode]);
 
   /* derived */
   const moduleByFileId = useMemo(() => {
@@ -1120,7 +1127,7 @@ export default function KnowledgeGraph() {
 
   return (
     <div
-      className="fixed inset-0 bg-[#0a0a0c] text-zinc-200 overflow-hidden"
+      className="fixed inset-0 bg-background text-foreground overflow-hidden"
       onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
     >
       <SubtleGrid />
@@ -1129,29 +1136,49 @@ export default function KnowledgeGraph() {
       {viewMode !== "folders" && (
         <ArchitectureColumns
           presentModules={presentModules.filter((m) => !hiddenModules.has(m))}
+          sidebarCollapsed={sidebarCollapsed}
         />
       )}
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-30 h-12 border-b border-white/[0.06] bg-[#0a0a0c]/80 backdrop-blur flex items-center px-4 gap-3">
+      <div
+        className="absolute top-2 left-2 right-2 z-30 h-12 clay-sm flex items-center px-3 gap-2"
+        style={{ borderRadius: 16 }}
+      >
         <Link
           to="/dashboard/repos"
-          className="px-2.5 py-1.5 rounded-md hover:bg-white/[0.05] text-xs flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 transition-colors"
+          className="px-2.5 py-1.5 rounded-xl hover:bg-white/[0.04] text-xs flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back
         </Link>
         <div className="h-4 w-px bg-white/10" />
+        <button
+          onClick={() => setSidebarCollapsed((v) => !v)}
+          className={`p-1.5 rounded-xl transition-all ${
+            sidebarCollapsed
+              ? "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+              : "clay-pressed text-foreground"
+          }`}
+          title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar (full-screen graph)"}
+        >
+          {sidebarCollapsed ? (
+            <PanelLeftOpen className="w-3.5 h-3.5" />
+          ) : (
+            <PanelLeftClose className="w-3.5 h-3.5" />
+          )}
+        </button>
+        <div className="h-4 w-px bg-white/10" />
         {data?.repo?.fullName && (
-          <div className="text-[13px] font-medium text-zinc-200 flex items-center gap-2 min-w-0">
-            <GitBranch className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+          <div className="text-[13px] font-medium text-foreground flex items-center gap-2 min-w-0">
+            <GitBranch className="w-3.5 h-3.5 text-primary flex-shrink-0" />
             <span className="truncate">{data.repo.fullName}</span>
           </div>
         )}
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-0.5 rounded-md bg-white/[0.04] border border-white/10 p-0.5">
+        <div className="flex items-center gap-0.5 clay-pill px-1 py-0.5">
           <ViewBtn
             icon={<Layers className="w-3.5 h-3.5" />}
             label="Architecture"
@@ -1174,34 +1201,40 @@ export default function KnowledgeGraph() {
 
         <div className="flex-1" />
 
-        <div className="text-[11px] text-zinc-500 flex items-center gap-3 font-mono tabular-nums">
-          <span className="flex items-center gap-1">
-            <FileCode2 className="w-3 h-3" />
+        <div className="text-[11px] text-muted-foreground flex items-center gap-2 font-mono tabular-nums">
+          <span className="clay-pill px-2 py-1 flex items-center gap-1.5 text-foreground">
+            <FileCode2 className="w-3 h-3 text-primary" />
             {fileCount}
           </span>
           {clusterCount > 0 && (
-            <span className="flex items-center gap-1">
-              <Layers className="w-3 h-3" />
+            <span className="clay-pill px-2 py-1 flex items-center gap-1.5 text-foreground">
+              <Layers className="w-3 h-3 text-secondary" />
               {clusterCount}
             </span>
           )}
-          <span>{graphData.links.length} edges</span>
+          <span className="clay-pill px-2 py-1 text-foreground">
+            {graphData.links.length} edges
+          </span>
         </div>
       </div>
 
       {/* Left sidebar */}
-      <aside className="absolute top-12 left-0 bottom-0 w-64 z-20 border-r border-white/[0.06] bg-[#0c0c10]/90 backdrop-blur flex flex-col">
-        <div className="p-3 border-b border-white/[0.06]">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.03] border border-white/10 focus-within:border-white/25 transition-colors">
-            <Search className="w-3.5 h-3.5 text-zinc-500" />
+      {!sidebarCollapsed && (
+      <aside
+        className="absolute top-16 left-2 bottom-2 w-64 z-20 clay-lg flex flex-col overflow-hidden"
+        style={{ borderRadius: 20 }}
+      >
+        <div className="p-3 border-b border-white/[0.04]">
+          <div className="clay-pressed flex items-center gap-2 px-3 py-2 transition-all">
+            <Search className="w-3.5 h-3.5 text-muted-foreground" />
             <input
               ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search files, modules…"
-              className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-zinc-600 text-zinc-200"
+              className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground text-foreground"
             />
-            <kbd className="text-[9px] text-zinc-500 px-1 py-0.5 border border-white/10 rounded">
+            <kbd className="clay-pill text-[9px] text-muted-foreground px-1.5 py-0.5">
               /
             </kbd>
           </div>
@@ -1209,20 +1242,20 @@ export default function KnowledgeGraph() {
 
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                 Modules
               </p>
               {viewMode !== "folders" && (
                 <button
                   onClick={() => setExpandedClusters(new Set())}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-200 transition-colors"
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded-md hover:bg-white/[0.04]"
                 >
                   Reset
                 </button>
               )}
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {presentModules.map((m) => {
                 const cfg = MODULES[m];
                 const hidden = hiddenModules.has(m);
@@ -1230,7 +1263,11 @@ export default function KnowledgeGraph() {
                 return (
                   <div
                     key={m}
-                    className="group flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors"
+                    className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all ${
+                      hidden
+                        ? "opacity-50"
+                        : "hover:bg-white/[0.03]"
+                    }`}
                   >
                     <button
                       onClick={() =>
@@ -1241,7 +1278,7 @@ export default function KnowledgeGraph() {
                           return n;
                         })
                       }
-                      className="text-zinc-500 hover:text-zinc-200 transition-colors flex-shrink-0"
+                      className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
                       title={hidden ? "Show" : "Hide"}
                     >
                       {hidden ? (
@@ -1251,13 +1288,16 @@ export default function KnowledgeGraph() {
                       )}
                     </button>
                     <span
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ background: cfg.color }}
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{
+                        background: cfg.color,
+                        boxShadow: `0 0 6px ${hexToRgba(cfg.color, 0.6)}`,
+                      }}
                     />
-                    <cfg.Icon className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                    <cfg.Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     <span
                       className={`text-[12px] flex-1 truncate ${
-                        hidden ? "text-zinc-600" : "text-zinc-300"
+                        hidden ? "text-muted-foreground" : "text-foreground"
                       }`}
                     >
                       {cfg.label}
@@ -1265,7 +1305,7 @@ export default function KnowledgeGraph() {
                     {viewMode !== "folders" && !hidden && (
                       <button
                         onClick={() => handleClusterToggle(m)}
-                        className="text-[10px] text-zinc-500 hover:text-zinc-200 transition-colors flex items-center gap-0.5 opacity-0 group-hover:opacity-100"
+                        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5 opacity-0 group-hover:opacity-100"
                       >
                         {expanded ? "Collapse" : "Expand"}
                         <ChevronRight
@@ -1283,14 +1323,14 @@ export default function KnowledgeGraph() {
 
           {selectedNode && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500 mb-2">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 px-1">
                 Selection
               </p>
-              <div className="px-2 py-1.5 rounded-md bg-white/[0.03] border border-white/10">
-                <p className="text-[12px] font-medium text-zinc-200 truncate">
+              <div className="clay-pressed px-3 py-2">
+                <p className="text-[12px] font-semibold text-foreground truncate">
                   {selectedNode.label}
                 </p>
-                <p className="text-[10px] text-zinc-500 truncate font-mono">
+                <p className="text-[10px] text-muted-foreground truncate font-mono mt-0.5">
                   {selectedNode.path}
                 </p>
               </div>
@@ -1298,43 +1338,45 @@ export default function KnowledgeGraph() {
           )}
 
           <div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500 mb-2">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 px-1">
               Legend
             </p>
-            <div className="space-y-1.5 text-[11px] text-zinc-400">
+            <div className="clay-pressed p-2.5 space-y-1.5 text-[11px]">
               <div className="flex items-center justify-between">
-                <span>Node size</span>
-                <span className="text-zinc-500">Importance</span>
+                <span className="text-foreground">Node size</span>
+                <span className="text-muted-foreground">Importance</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Edge width</span>
-                <span className="text-zinc-500">Strength</span>
+                <span className="text-foreground">Edge width</span>
+                <span className="text-muted-foreground">Strength</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Red dot</span>
-                <span className="text-zinc-500">High coupling</span>
+                <span className="text-foreground">Red dot</span>
+                <span className="text-muted-foreground">High coupling</span>
               </div>
             </div>
           </div>
         </div>
       </aside>
+      )}
 
       {/* Canvas area */}
       <div
         ref={containerRef}
-        className={`absolute left-64 right-0 bottom-0 ${
-          viewMode === "folders" ? "top-12" : "top-24"
-        }`}
+        className={`absolute ${sidebarCollapsed ? "left-2" : "left-[17rem]"} right-2 bottom-2 ${
+          viewMode === "folders" ? "top-16" : "top-[7rem]"
+        } clay-pressed overflow-hidden`}
+        style={{ borderRadius: 20 }}
       >
         {graphData.nodes.length === 0 ? (
-          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 text-sm">
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
             No graph data available.
           </div>
         ) : (
           <ForceGraph2D
             ref={fgRef}
-            width={size.w - 256}
-            height={size.h - 48}
+            width={size.w}
+            height={size.h}
             graphData={graphData}
             backgroundColor="rgba(0,0,0,0)"
             nodeRelSize={1}
@@ -1383,14 +1425,15 @@ export default function KnowledgeGraph() {
       {/* Hover tooltip */}
       {hoverNode && (
         <div
-          className="pointer-events-none fixed z-40 px-3 py-2 rounded-md bg-[#0c0c10] border border-white/15 shadow-xl text-[11px]"
+          className="pointer-events-none fixed z-40 clay-sm px-3 py-2 text-[11px]"
           style={{
-            left: Math.min(mousePos.x + 14, size.w - 280),
-            top: Math.min(mousePos.y + 14, size.h - 180),
+            left: Math.min(mousePos.x + 14, window.innerWidth - 296),
+            top: Math.min(mousePos.y + 14, window.innerHeight - 200),
             maxWidth: 280,
+            borderRadius: 14,
           }}
         >
-          <div className="flex items-center gap-1.5 font-semibold text-zinc-100">
+          <div className="flex items-center gap-1.5 font-semibold text-foreground">
             {hoverNode.kind === "cluster" ? (
               <Layers
                 className="w-3 h-3"
@@ -1404,13 +1447,13 @@ export default function KnowledgeGraph() {
             )}
             <span className="truncate">{hoverNode.label}</span>
           </div>
-          <div className="text-zinc-500 text-[10px] mt-0.5 break-all font-mono">
+          <div className="text-muted-foreground text-[10px] mt-0.5 break-all font-mono">
             {hoverNode.kind === "cluster" && viewMode !== "folders"
               ? `${MODULES[hoverNode.module].label} · ${hoverNode.childCount} files`
               : hoverNode.path}
           </div>
           {hoverNode.kind === "file" && (
-            <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-zinc-300">
+            <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-foreground">
               <Row k="Module" v={MODULES[hoverNode.module].label} />
               <Row
                 k="Lang"
@@ -1434,7 +1477,7 @@ export default function KnowledgeGraph() {
               />
             </div>
           )}
-          <div className="mt-1.5 text-[10px] text-zinc-500 border-t border-white/10 pt-1.5">
+          <div className="mt-1.5 text-[10px] text-muted-foreground border-t border-white/10 pt-1.5">
             {hoverNode.kind === "cluster" && viewMode !== "folders"
               ? "Click to expand cluster"
               : "Click to inspect"}
@@ -1443,7 +1486,10 @@ export default function KnowledgeGraph() {
       )}
 
       {/* Floating zoom toolbar */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-0.5 rounded-md bg-[#0c0c10]/95 border border-white/10 p-0.5 shadow-lg">
+      <div
+        className="absolute bottom-6 right-6 z-20 flex items-center gap-0.5 clay-sm p-1"
+        style={{ borderRadius: 14 }}
+      >
         <ToolbarBtn onClick={handleZoomIn} title="Zoom in">
           <ZoomIn className="w-3.5 h-3.5" />
         </ToolbarBtn>
@@ -1453,7 +1499,7 @@ export default function KnowledgeGraph() {
         <ToolbarBtn onClick={handleResetView} title="Fit (R)">
           <Maximize2 className="w-3.5 h-3.5" />
         </ToolbarBtn>
-        <span className="w-px h-4 bg-white/10 mx-0.5" />
+        <span className="w-px h-5 bg-white/10 mx-1" />
         <ToolbarBtn
           onClick={() => setShowMinimap((v) => !v)}
           title="Minimap (M)"
@@ -1476,8 +1522,8 @@ export default function KnowledgeGraph() {
       {/* Minimap */}
       {showMinimap && graphData.nodes.length > 0 && (
         <div
-          className="absolute bottom-4 right-[calc(1rem+260px)] z-20 rounded-md bg-[#0c0c10]/95 border border-white/10 p-1.5 shadow-lg"
-          style={{ width: 200, height: 140 }}
+          className="absolute bottom-6 right-[calc(1.5rem+288px)] z-20 clay-sm p-2"
+          style={{ width: 208, height: 148, borderRadius: 16 }}
         >
           <Minimap
             nodes={graphData.nodes}
@@ -1489,21 +1535,24 @@ export default function KnowledgeGraph() {
       {/* Shortcuts */}
       {showShortcuts && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setShowShortcuts(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="rounded-lg bg-[#0c0c10] border border-white/10 p-5 w-[420px] shadow-2xl"
+            className="clay-lg p-6 w-[440px]"
+            style={{ borderRadius: 24 }}
           >
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Keyboard className="w-4 h-4 text-zinc-400" />
-                <p className="text-[13px] font-semibold">Keyboard shortcuts</p>
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="clay-icon w-8 h-8 flex items-center justify-center bg-primary/10 text-primary">
+                  <Keyboard className="w-4 h-4" />
+                </div>
+                <p className="text-[14px] font-semibold text-foreground">Keyboard shortcuts</p>
               </div>
               <button
                 onClick={() => setShowShortcuts(false)}
-                className="text-zinc-500 hover:text-zinc-200"
+                className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-white/[0.04] transition-all"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1527,16 +1576,18 @@ export default function KnowledgeGraph() {
       {/* Detail panel */}
       {selectedNode && (
         <div
-          className="absolute top-12 right-0 bottom-0 w-[380px] z-30 border-l border-white/[0.06] bg-[#0c0c10]/95 backdrop-blur flex flex-col"
-          style={{ transition: "transform 180ms ease-out" }}
+          className="absolute top-16 right-2 bottom-2 w-[380px] z-30 clay-lg flex flex-col overflow-hidden"
+          style={{
+            borderRadius: 20,
+            transition: "transform 180ms ease-out",
+          }}
         >
-          <div className="flex items-start justify-between px-4 py-3 border-b border-white/[0.06]">
+          <div className="flex items-start justify-between px-4 py-3 border-b border-white/[0.04]">
             <div className="min-w-0 flex items-start gap-2.5">
               <div
-                className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
+                className="clay-icon w-9 h-9 flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: hexToRgba(MODULES[selectedNode.module].color, 0.12),
-                  border: `1px solid ${hexToRgba(MODULES[selectedNode.module].color, 0.4)}`,
+                  background: `linear-gradient(145deg, ${hexToRgba(MODULES[selectedNode.module].color, 0.18)}, ${hexToRgba(MODULES[selectedNode.module].color, 0.08)})`,
                 }}
               >
                 {selectedNode.kind === "cluster" ? (
@@ -1552,10 +1603,10 @@ export default function KnowledgeGraph() {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold truncate text-zinc-100">
+                <p className="text-[13px] font-semibold truncate text-foreground">
                   {selectedNode.label}
                 </p>
-                <p className="text-[11px] text-zinc-500 mt-0.5 break-all font-mono">
+                <p className="text-[11px] text-muted-foreground mt-0.5 break-all font-mono">
                   {selectedNode.kind === "cluster" && viewMode !== "folders"
                     ? `${MODULES[selectedNode.module].label} · ${selectedNode.childCount} files`
                     : selectedNode.path}
@@ -1564,7 +1615,7 @@ export default function KnowledgeGraph() {
             </div>
             <button
               onClick={() => setSelectedNode(null)}
-              className="text-zinc-500 hover:text-zinc-200 ml-2 transition-colors"
+              className="text-muted-foreground hover:text-foreground ml-2 p-1.5 rounded-lg hover:bg-white/[0.04] transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1596,7 +1647,7 @@ export default function KnowledgeGraph() {
                 </Section>
                 <button
                   onClick={() => handleClusterToggle(selectedNode.module)}
-                  className="w-full px-3 py-2 rounded-md bg-white/[0.04] border border-white/10 hover:border-white/25 text-[12px] flex items-center justify-center gap-1.5 transition-colors"
+                  className="clay-btn clay-btn-ghost w-full px-3 py-2 text-[12px] flex items-center justify-center gap-1.5"
                 >
                   {expandedClusters.has(selectedNode.module)
                     ? "Collapse cluster"
@@ -1610,7 +1661,7 @@ export default function KnowledgeGraph() {
                     href={githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full px-3 py-2 rounded-md bg-white/[0.04] border border-white/10 hover:border-white/25 text-[12px] flex items-center justify-center gap-1.5 transition-colors"
+                    className="clay-btn clay-btn-ghost w-full px-3 py-2 text-[12px] flex items-center justify-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     View on GitHub
@@ -1656,7 +1707,7 @@ export default function KnowledgeGraph() {
                 <Section
                   id="imports"
                   title={`Depends on · ${outgoing.length}`}
-                  icon={<Hash className="w-3 h-3 text-zinc-500" />}
+                  icon={<Hash className="w-3 h-3 text-muted-foreground" />}
                   open={accordion.imports}
                   onToggle={() =>
                     setAccordion((p) => ({ ...p, imports: !p.imports }))
@@ -1673,7 +1724,7 @@ export default function KnowledgeGraph() {
                 <Section
                   id="importedBy"
                   title={`Used by · ${incoming.length}`}
-                  icon={<Hash className="w-3 h-3 text-zinc-500" />}
+                  icon={<Hash className="w-3 h-3 text-muted-foreground" />}
                   open={accordion.importedBy}
                   onToggle={() =>
                     setAccordion((p) => ({
@@ -1704,9 +1755,12 @@ export default function KnowledgeGraph() {
 
 function ArchitectureColumns({
   presentModules,
+  sidebarCollapsed,
 }: {
   presentModules: ModuleId[];
+  sidebarCollapsed?: boolean;
 }) {
+  const leftClass = sidebarCollapsed ? "left-2" : "left-[17rem]";
   const layers = useMemo(() => {
     const m = new Map<number, ModuleId[]>();
     for (const id of presentModules) {
@@ -1720,15 +1774,18 @@ function ArchitectureColumns({
   return (
     <>
       {/* Background bands behind the canvas */}
-      <div className="absolute top-12 left-64 right-0 bottom-0 z-0 flex pointer-events-none">
+      <div
+        className={`absolute top-[7rem] ${leftClass} right-2 bottom-2 z-0 flex pointer-events-none overflow-hidden`}
+        style={{ borderRadius: 20 }}
+      >
         {layers.map(([layer, mods]) => {
           const accent = MODULES[mods[0]].color;
           return (
             <div
               key={`band-${layer}`}
-              className="flex-1 border-r border-white/[0.05] last:border-r-0 relative"
+              className="flex-1 border-r border-white/[0.04] last:border-r-0 relative"
               style={{
-                background: `linear-gradient(180deg, ${hexToRgba(accent, 0.05)} 0%, ${hexToRgba(accent, 0.015)} 100%)`,
+                background: `linear-gradient(180deg, ${hexToRgba(accent, 0.06)} 0%, ${hexToRgba(accent, 0.015)} 100%)`,
               }}
             />
           );
@@ -1736,33 +1793,42 @@ function ArchitectureColumns({
       </div>
 
       {/* Header rail */}
-      <div className="absolute top-12 left-64 right-0 h-12 z-10 border-b border-white/[0.07] flex pointer-events-none bg-[#0a0a0c]/85 backdrop-blur">
-        {layers.map(([layer, mods]) => {
+      <div
+        className={`absolute top-16 ${leftClass} right-2 h-12 z-10 clay-sm flex pointer-events-none overflow-hidden`}
+        style={{ borderRadius: 16 }}
+      >
+        {layers.map(([layer, mods], idx) => {
           const accent = MODULES[mods[0]].color;
           return (
             <div
               key={layer}
-              className="flex-1 px-4 flex flex-col justify-center gap-0.5 border-r border-white/[0.06] last:border-r-0 relative"
+              className={`flex-1 px-4 flex flex-col justify-center gap-0.5 relative ${
+                idx > 0 ? "border-l border-white/[0.04]" : ""
+              }`}
             >
               <div
-                className="absolute top-0 left-0 right-0 h-0.5"
-                style={{ background: hexToRgba(accent, 0.85) }}
+                className="absolute top-0 left-3 right-3 h-0.5 rounded-full"
+                style={{
+                  background: accent,
+                  boxShadow: `0 0 8px ${hexToRgba(accent, 0.5)}`,
+                }}
               />
               <div className="flex items-center gap-2">
                 <span
-                  className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                  className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
                   style={{
                     background: hexToRgba(accent, 0.18),
                     color: accent,
+                    border: `1px solid ${hexToRgba(accent, 0.3)}`,
                   }}
                 >
                   L{layer}
                 </span>
-                <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-zinc-100">
+                <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-foreground">
                   {LAYER_LABELS[layer]}
                 </span>
               </div>
-              <span className="text-[10px] text-zinc-500 truncate">
+              <span className="text-[10px] text-muted-foreground truncate">
                 {mods.map((m) => MODULES[m].label).join(" · ")}
               </span>
             </div>
@@ -1779,14 +1845,23 @@ function ArchitectureColumns({
 
 function SubtleGrid() {
   return (
-    <div
-      className="absolute inset-0 pointer-events-none opacity-[0.04]"
-      style={{
-        backgroundImage:
-          "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
-        backgroundSize: "56px 56px",
-      }}
-    />
+    <>
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.035]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 20% 10%, rgba(129, 140, 248, 0.06) 0%, transparent 50%), radial-gradient(circle at 80% 90%, rgba(45, 212, 191, 0.04) 0%, transparent 50%)",
+        }}
+      />
+    </>
   );
 }
 
@@ -1804,26 +1879,48 @@ function Status({
   backLabel?: string;
 }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-zinc-200 flex flex-col items-center justify-center gap-3 p-6">
-      {tone === "error" ? (
-        <AlertCircle className="w-7 h-7 text-rose-400" />
-      ) : tone === "indexing" ? (
-        <div className="w-9 h-9 rounded-full border-2 border-white/10 border-t-zinc-300 animate-spin" />
-      ) : (
-        <div className="w-9 h-9 rounded-full border-2 border-white/10 border-t-zinc-400 animate-spin" />
-      )}
-      <p className={`text-[13px] font-medium ${tone === "error" ? "text-rose-300" : "text-zinc-200"}`}>
-        {label}
-      </p>
-      {sub && <p className="text-[11px] text-zinc-500 max-w-md text-center">{sub}</p>}
-      {backHref && (
-        <Link
-          to={backHref}
-          className="text-[11px] text-zinc-400 hover:text-zinc-100 underline mt-2"
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 p-6 relative">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 30%, rgba(129, 140, 248, 0.08) 0%, transparent 50%)",
+        }}
+      />
+      <div
+        className="clay-lg flex flex-col items-center gap-4 px-8 py-8 max-w-md relative"
+        style={{ borderRadius: 24 }}
+      >
+        {tone === "error" ? (
+          <div className="clay-icon w-12 h-12 flex items-center justify-center bg-destructive/10 text-destructive">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+        ) : (
+          <div className="clay-icon w-12 h-12 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full border-2 border-muted-foreground/20 border-t-primary animate-spin" />
+          </div>
+        )}
+        <p
+          className={`text-[14px] font-semibold text-center ${
+            tone === "error" ? "text-destructive" : "text-foreground"
+          }`}
         >
-          {backLabel || "Back"}
-        </Link>
-      )}
+          {label}
+        </p>
+        {sub && (
+          <p className="text-[11px] text-muted-foreground max-w-md text-center leading-relaxed">
+            {sub}
+          </p>
+        )}
+        {backHref && (
+          <Link
+            to={backHref}
+            className="clay-btn clay-btn-ghost px-4 py-2 text-[12px] mt-1"
+          >
+            {backLabel || "Back"}
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -1842,10 +1939,10 @@ function ViewBtn({
   return (
     <button
       onClick={onClick}
-      className={`px-2.5 py-1 rounded-[4px] text-[11px] font-medium flex items-center gap-1.5 transition-colors ${
+      className={`px-3 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
         active
-          ? "bg-white/10 text-zinc-100"
-          : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+          ? "clay-pressed text-foreground"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}
@@ -1869,10 +1966,10 @@ function ToolbarBtn({
     <button
       onClick={onClick}
       title={title}
-      className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
         active
-          ? "bg-white/10 text-zinc-100"
-          : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]"
+          ? "clay-pressed text-foreground"
+          : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
       }`}
     >
       {children}
@@ -1882,13 +1979,13 @@ function ToolbarBtn({
 
 function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-white/[0.03]">
-      <span className="text-zinc-300">{label}</span>
+    <div className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-lg hover:bg-white/[0.03] transition-colors">
+      <span className="text-foreground">{label}</span>
       <div className="flex items-center gap-1">
         {keys.map((k, i) => (
           <kbd
             key={i}
-            className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/15 text-[10px] font-mono text-zinc-200"
+            className="clay-pill px-2 py-0.5 text-[10px] font-mono text-foreground"
           >
             {k}
           </kbd>
@@ -1914,19 +2011,19 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-white/[0.07]">
+    <div className="clay-pressed overflow-hidden" style={{ borderRadius: 14 }}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.03] transition-colors"
       >
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wide">
+          <span className="text-[11px] font-semibold text-foreground uppercase tracking-wide">
             {title}
           </span>
         </div>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-zinc-500 transition-transform ${
+          className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${
             open ? "rotate-0" : "-rotate-90"
           }`}
         />
@@ -1952,13 +2049,13 @@ function Row({
 }) {
   const cls =
     tone === "red"
-      ? "text-rose-300"
+      ? "text-destructive"
       : tone === "amber"
-        ? "text-amber-300"
-        : "text-zinc-200";
+        ? "text-accent"
+        : "text-foreground";
   return (
     <div className="flex items-center justify-between gap-2 text-[10px]">
-      <span className="text-zinc-500">{k}</span>
+      <span className="text-muted-foreground">{k}</span>
       <span className={`font-medium ${cls} font-mono tabular-nums`}>{v}</span>
     </div>
   );
@@ -1975,14 +2072,14 @@ function Stat({
 }) {
   const cls =
     tone === "red"
-      ? "text-rose-300"
+      ? "text-destructive"
       : tone === "amber"
-        ? "text-amber-300"
-        : "text-zinc-100";
+        ? "text-accent"
+        : "text-foreground";
   return (
-    <div className="rounded-md bg-white/[0.02] border border-white/[0.06] px-2.5 py-1.5">
-      <p className="text-[10px] uppercase text-zinc-500 tracking-wide">{label}</p>
-      <p className={`text-[12px] font-semibold ${cls} truncate`}>{value}</p>
+    <div className="clay-pressed px-2.5 py-1.5" style={{ borderRadius: 12 }}>
+      <p className="text-[10px] uppercase text-muted-foreground tracking-wide">{label}</p>
+      <p className={`text-[12px] font-semibold ${cls} truncate font-mono tabular-nums`}>{value}</p>
     </div>
   );
 }
@@ -1999,7 +2096,7 @@ function FileLinkList({
   onSelect: (id: string) => void;
 }) {
   if (edges.length === 0) {
-    return <p className="text-[11px] text-zinc-600 px-1 py-1">None</p>;
+    return <p className="text-[11px] text-muted-foreground px-1 py-1">None</p>;
   }
   return (
     <div className="space-y-0.5 max-h-52 overflow-y-auto">
@@ -2012,21 +2109,24 @@ function FileLinkList({
           <button
             key={`${id}-${i}`}
             onClick={() => onSelect(id)}
-            className="w-full text-left px-2 py-1.5 rounded hover:bg-white/[0.04] flex items-center gap-2 transition-colors"
+            className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-white/[0.04] flex items-center gap-2 transition-all"
           >
             <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: cfg.color }}
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{
+                background: cfg.color,
+                boxShadow: `0 0 4px ${hexToRgba(cfg.color, 0.5)}`,
+              }}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium text-zinc-200 truncate">
+              <p className="text-[11px] font-medium text-foreground truncate">
                 {filename}
               </p>
-              <p className="text-[10px] text-zinc-500 truncate font-mono">
+              <p className="text-[10px] text-muted-foreground truncate font-mono">
                 {id}
               </p>
             </div>
-            <span className="text-[9px] uppercase text-zinc-500 flex-shrink-0 font-mono">
+            <span className="clay-pill text-[9px] uppercase text-muted-foreground flex-shrink-0 font-mono px-1.5 py-0.5">
               {e.type}
             </span>
           </button>
