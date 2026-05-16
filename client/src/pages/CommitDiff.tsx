@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, ZoomIn, ZoomOut } from "lucide-react";
 import axios from "../api/axios";
 
 interface FileDiff {
@@ -15,322 +14,250 @@ interface CommitData {
   files: string[];
   pushedAt: string;
   fileDiffs: FileDiff[];
+  scoreDelta?: number;
 }
 
-/**
- * Displays a full-page diff viewer for a specific commit.
- * Fetches commit data from the repo health snapshot, parses unified diffs,
- * and renders a side-by-side file tree with syntax-highlighted diff output.
- * Supports zoom controls for font size adjustment.
- */
+interface ParsedLine {
+  type: "add" | "remove" | "context" | "header";
+  content: string;
+  oldLine?: number;
+  newLine?: number;
+}
+
+function parsePatch(patch: string): ParsedLine[] {
+  const lines = patch.split("\n");
+  const result: ParsedLine[] = [];
+  let oldLine = 1;
+  let newLine = 1;
+  for (const line of lines) {
+    if (line.startsWith("@@")) {
+      const m = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
+      if (m) {
+        oldLine = parseInt(m[1]);
+        newLine = parseInt(m[2]);
+      }
+      result.push({ type: "header", content: line });
+    } else if (line.startsWith("+")) {
+      result.push({ type: "add", content: line.slice(1), newLine: newLine++ });
+    } else if (line.startsWith("-")) {
+      result.push({ type: "remove", content: line.slice(1), oldLine: oldLine++ });
+    } else {
+      const content = line.startsWith(" ") ? line.slice(1) : line;
+      result.push({
+        type: "context",
+        content,
+        oldLine: oldLine++,
+        newLine: newLine++,
+      });
+    }
+  }
+  return result;
+}
+
 export default function CommitDiff() {
-  const { repoId, commitSha } = useParams<{
-    repoId: string;
-    commitSha: string;
-  }>();
+  const { repoId, sha } = useParams<{ repoId: string; sha: string }>();
+  const commitSha = sha;
   const navigate = useNavigate();
   const [commit, setCommit] = useState<CommitData | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fontSize, setFontSize] = useState(12);
 
   useEffect(() => {
-    fetchCommitData();
+    if (!repoId || !commitSha) return;
+    setLoading(true);
+    axios
+      .get(`/health/${repoId}/commit/${commitSha}`)
+      .then(({ data }) => {
+        const c =
+          data.commit ||
+          data.recentPushes?.find((p: CommitData) => p.commitSha === commitSha);
+        if (c) {
+          setCommit(c);
+          if (c.fileDiffs?.length) setSelectedFile(c.fileDiffs[0].filename);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [repoId, commitSha]);
 
-  const fetchCommitData = async () => {
-    try {
-      const res = await axios.get(`/health/${repoId}/commit/${commitSha}`);
-      const commitData =
-        res.data.commit ||
-        res.data.recentPushes?.find(
-          (p: CommitData) => p.commitSha === commitSha,
-        );
-
-      if (commitData) {
-        setCommit(commitData);
-        if (commitData.fileDiffs && commitData.fileDiffs.length > 0) {
-          setSelectedFile(commitData.fileDiffs[0].filename);
-        }
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error("Failed to fetch commit data:", err);
-      setLoading(false);
-    }
-  };
-
-  const parsePatch = (patch: string) => {
-    const lines = patch.split("\n");
-    const result: Array<{
-      type: "add" | "remove" | "context" | "header";
-      content: string;
-      oldLine?: number;
-      newLine?: number;
-    }> = [];
-
-    let oldLine = 1;
-    let newLine = 1;
-
-    for (const line of lines) {
-      if (line.startsWith("@@")) {
-        // Parse hunk header: @@ -oldStart,oldCount +newStart,newCount @@
-        const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
-        if (match) {
-          oldLine = parseInt(match[1]);
-          newLine = parseInt(match[2]);
-        }
-        result.push({ type: "header", content: line });
-      } else if (line.startsWith("+")) {
-        result.push({
-          type: "add",
-          content: line.slice(1),
-          newLine: newLine++,
-        });
-      } else if (line.startsWith("-")) {
-        result.push({
-          type: "remove",
-          content: line.slice(1),
-          oldLine: oldLine++,
-        });
-      } else if (line.startsWith(" ")) {
-        result.push({
-          type: "context",
-          content: line.slice(1),
-          oldLine: oldLine++,
-          newLine: newLine++,
-        });
-      } else {
-        result.push({
-          type: "context",
-          content: line,
-          oldLine: oldLine++,
-          newLine: newLine++,
-        });
-      }
-    }
-
-    return result;
-  };
-
-  const selectedFileDiff = commit?.fileDiffs.find(
-    (f) => f.filename === selectedFile,
-  );
-
-  const handleZoomIn = () => {
-    setFontSize((prev) => Math.min(prev + 2, 24));
-  };
-
-  const handleZoomOut = () => {
-    setFontSize((prev) => Math.max(prev - 2, 8));
-  };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-400">Loading commit details...</div>
-      </div>
-    );
+    return <p className="label-mono p-6">{"> LOADING COMMIT_"}</p>;
   }
 
   if (!commit) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-400">Commit not found</div>
-      </div>
-    );
+    return <p className="label-mono p-6">{"> COMMIT NOT FOUND"}</p>;
   }
 
+  const sel = commit.fileDiffs.find((f) => f.filename === selectedFile);
+  const totalAdds = commit.fileDiffs.reduce((s, f) => s + (f.additions || 0), 0);
+  const totalDels = commit.fileDiffs.reduce((s, f) => s + (f.deletions || 0), 0);
+  const delta =
+    commit.scoreDelta !== undefined
+      ? commit.scoreDelta
+      : (totalAdds - totalDels) * 0.01;
+  const deltaColor =
+    delta > 0
+      ? "var(--neon-lime)"
+      : delta < 0
+        ? "var(--neon-red)"
+        : "var(--text-secondary)";
+
   return (
-    <div className="-m-4 sm:-m-6 lg:-m-8 h-screen flex flex-col bg-[#0a0a0f] overflow-hidden">
-      {/* Header */}
+    <div className="-m-6 md:-m-8 h-[calc(100vh-0px)] flex flex-col overflow-hidden">
       <div
-        className="clay p-4 flex items-center justify-between border-b border-gray-800 flex-shrink-0 m-4 mb-0"
-        style={{ borderRadius: "20px" }}
+        className="px-6 py-4 border-b flex items-center justify-between"
+        style={{
+          borderColor: "var(--border-default)",
+          background: "var(--bg-panel)",
+        }}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <button
-            onClick={() => {
-              if (repoId && /^[a-f0-9]{24}$/i.test(repoId)) {
-                navigate(`/dashboard/repo-health?repo=${repoId}`);
-              } else {
-                navigate("/dashboard/repos");
-              }
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-colors"
+            onClick={() =>
+              repoId && /^[a-f0-9]{24}$/i.test(repoId)
+                ? navigate(`/dashboard/repo-health/${repoId}`)
+                : navigate("/dashboard/repos")
+            }
+            className="btn-neon"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Repo Health
+            {"< BACK"}
           </button>
           <div>
-            <div className="text-sm text-gray-400">Commit</div>
-            <div className="font-mono text-sm">{commitSha?.slice(0, 7)}</div>
+            <p className="label-mono">COMMIT</p>
+            <p
+              className="font-mono text-sm text-glow-cyan"
+              style={{ color: "var(--neon-cyan)" }}
+            >
+              {commitSha?.slice(0, 12)}
+            </p>
+          </div>
+          <div>
+            <p className="label-mono">PUSHED</p>
+            <p
+              className="font-mono text-xs"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {new Date(commit.pushedAt).toISOString().slice(0, 19).replace("T", " ")}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleZoomOut}
-              className="clay-icon w-8 h-8 flex items-center justify-center hover:bg-gray-700/50 transition-colors"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <span className="text-xs text-gray-400 min-w-[3rem] text-center">
-              {fontSize}px
-            </span>
-            <button
-              onClick={handleZoomIn}
-              className="clay-icon w-8 h-8 flex items-center justify-center hover:bg-gray-700/50 transition-colors"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="text-sm text-gray-400">
-            {new Date(commit.pushedAt).toLocaleString()}
-          </div>
+
+        <div className="panel px-4 py-2">
+          <p className="label-mono">SCORE Δ</p>
+          <p
+            className="heading-display text-lg"
+            style={{ color: deltaColor, textShadow: "0 0 6px currentColor" }}
+          >
+            {delta > 0 ? "+" : ""}
+            {delta.toFixed(2)}
+          </p>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex gap-4 px-4 pb-4 pt-4 overflow-hidden">
-        {/* File Tree Sidebar */}
-        <div className="w-72 flex flex-col overflow-hidden">
-          <div
-            className="clay p-3 mb-3 flex-shrink-0"
-            style={{ borderRadius: "16px" }}
-          >
-            <div className="text-xs font-semibold text-gray-300">
-              Changed Files ({commit.fileDiffs.length})
-            </div>
-          </div>
-          <div
-            className="clay flex-1 overflow-y-auto"
-            style={{ borderRadius: "20px" }}
-          >
-            <div className="p-2 space-y-1.5">
-              {commit.fileDiffs.map((file) => (
-                <button
-                  key={file.filename}
-                  onClick={() => setSelectedFile(file.filename)}
-                  className={`w-full text-left transition-all ${
-                    selectedFile === file.filename
-                      ? "clay-pressed"
-                      : "clay-sm hover:clay-pressed"
-                  }`}
-                  style={{ borderRadius: "12px" }}
-                >
-                  <div className="p-2.5">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-gray-200 truncate font-mono">
-                          {file.filename.split("/").pop()}
-                        </div>
-                        {file.filename.includes("/") && (
-                          <div className="text-[10px] text-gray-500 truncate mt-0.5">
-                            {file.filename.split("/").slice(0, -1).join("/")}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <span className="clay-pill px-1.5 py-0.5 text-[10px] text-green-400">
-                        +{file.additions}
-                      </span>
-                      <span className="clay-pill px-1.5 py-0.5 text-[10px] text-red-400">
-                        -{file.deletions}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Diff Viewer */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {selectedFileDiff ? (
-            <div
-              className="clay h-full flex flex-col overflow-hidden"
-              style={{ borderRadius: "20px" }}
+      <div className="flex-1 flex overflow-hidden">
+        <aside
+          className="w-72 overflow-y-auto border-r"
+          style={{
+            borderColor: "var(--border-default)",
+            background: "var(--bg-panel)",
+          }}
+        >
+          <p className="label-mono p-3">
+            CHANGED FILES ({commit.fileDiffs.length})
+          </p>
+          {commit.fileDiffs.map((f) => (
+            <button
+              key={f.filename}
+              onClick={() => setSelectedFile(f.filename)}
+              className="w-full text-left px-3 py-2 text-xs font-mono transition-colors hover:bg-[rgba(0,240,255,0.05)]"
+              style={{
+                color:
+                  selectedFile === f.filename
+                    ? "var(--neon-cyan)"
+                    : "var(--text-secondary)",
+                borderLeft:
+                  selectedFile === f.filename
+                    ? "2px solid var(--neon-cyan)"
+                    : "2px solid transparent",
+              }}
             >
-              {selectedFileDiff.patch ? (
-                <div className="flex-1 overflow-auto p-4">
+              <div className="truncate">{f.filename}</div>
+              <div className="flex gap-3 mt-1 text-[10px]">
+                <span style={{ color: "var(--neon-lime)" }}>+{f.additions}</span>
+                <span style={{ color: "var(--neon-red)" }}>-{f.deletions}</span>
+              </div>
+            </button>
+          ))}
+        </aside>
+
+        <main className="flex-1 overflow-auto">
+          {sel?.patch ? (
+            <div className="font-mono text-[11px] leading-relaxed">
+              {parsePatch(sel.patch).map((line, i) => {
+                const bg =
+                  line.type === "add"
+                    ? "rgba(182, 255, 60, 0.06)"
+                    : line.type === "remove"
+                      ? "rgba(255, 56, 96, 0.06)"
+                      : line.type === "header"
+                        ? "rgba(0, 240, 255, 0.06)"
+                        : "transparent";
+                const borderColor =
+                  line.type === "add"
+                    ? "var(--neon-lime)"
+                    : line.type === "remove"
+                      ? "var(--neon-red)"
+                      : "transparent";
+                const color =
+                  line.type === "add"
+                    ? "var(--neon-lime)"
+                    : line.type === "remove"
+                      ? "var(--neon-red)"
+                      : line.type === "header"
+                        ? "var(--neon-cyan)"
+                        : "var(--text-primary)";
+                return (
                   <div
-                    className="clay-pressed font-mono"
-                    style={{ borderRadius: "16px", fontSize: `${fontSize}px` }}
+                    key={i}
+                    className="flex"
+                    style={{
+                      background: bg,
+                      borderLeft: `2px solid ${borderColor}`,
+                    }}
                   >
-                    {parsePatch(selectedFileDiff.patch).map((line, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex ${
-                          line.type === "add"
-                            ? "bg-green-500/10"
-                            : line.type === "remove"
-                              ? "bg-red-500/10"
-                              : line.type === "header"
-                                ? "bg-blue-500/10"
-                                : ""
-                        }`}
-                      >
-                        {/* Line Numbers */}
-                        <div className="flex flex-shrink-0">
-                          <div className="w-12 text-right px-2 py-1 text-gray-600 select-none border-r border-gray-800">
-                            {line.oldLine ?? ""}
-                          </div>
-                          <div className="w-12 text-right px-2 py-1 text-gray-600 select-none border-r border-gray-800">
-                            {line.newLine ?? ""}
-                          </div>
-                        </div>
-
-                        {/* Diff Indicator */}
-                        <div className="w-8 px-2 py-1 text-center select-none flex-shrink-0">
-                          {line.type === "add" && (
-                            <span className="text-green-400">+</span>
-                          )}
-                          {line.type === "remove" && (
-                            <span className="text-red-400">-</span>
-                          )}
-                        </div>
-
-                        {/* Code Content */}
-                        <div
-                          className={`flex-1 px-2 py-1 whitespace-pre ${
-                            line.type === "add"
-                              ? "text-green-300"
-                              : line.type === "remove"
-                                ? "text-red-300"
-                                : line.type === "header"
-                                  ? "text-blue-300 font-semibold"
-                                  : "text-gray-300"
-                          }`}
-                        >
-                          {line.content}
-                        </div>
-                      </div>
-                    ))}
+                    <div
+                      className="w-12 text-right px-2 select-none"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {line.oldLine ?? ""}
+                    </div>
+                    <div
+                      className="w-12 text-right px-2 select-none"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {line.newLine ?? ""}
+                    </div>
+                    <div className="w-6 text-center select-none" style={{ color }}>
+                      {line.type === "add"
+                        ? "+"
+                        : line.type === "remove"
+                          ? "-"
+                          : ""}
+                    </div>
+                    <div
+                      className="flex-1 px-2 whitespace-pre"
+                      style={{ color }}
+                    >
+                      {line.content}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-gray-400">
-                    No diff data available for this file
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           ) : (
-            <div
-              className="clay flex items-center justify-center h-full"
-              style={{ borderRadius: "20px" }}
-            >
-              <div className="text-gray-400">Select a file to view changes</div>
-            </div>
+            <p className="label-mono p-6">{"> NO DIFF DATA"}</p>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );

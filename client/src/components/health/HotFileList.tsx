@@ -1,24 +1,36 @@
-import { Flame, FileCode } from 'lucide-react';
+import { useNavigate, useParams } from "react-router-dom";
 
 interface Props {
   files: string[];
 }
 
 export function HotFileList({ files }: Props) {
+  const navigate = useNavigate();
+  const { repoId } = useParams();
   if (files.length === 0) return null;
   return (
-    <div className="clay-card p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Flame size={16} className="text-orange-400" />
-        <h3 className="text-sm font-medium">Blast-radius files</h3>
-        <span className="text-xs text-gray-400 ml-auto">High centrality + high churn</span>
+    <div className="panel p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="label-mono">HOTSPOT FILES</p>
+        <p className="text-[10px] label-mono">
+          HIGH CENTRALITY × HIGH CHURN
+        </p>
       </div>
-      <div className="flex flex-col gap-1">
-        {files.map(f => (
-          <div key={f} className="flex items-center gap-2 py-1.5 px-2 rounded bg-orange-500/5 border border-orange-500/20">
-            <FileCode size={13} className="text-orange-400 shrink-0" />
-            <span className="text-xs font-mono text-gray-300 truncate">{f}</span>
-            <span className="text-xs text-orange-400 ml-auto shrink-0">monitor closely</span>
+      <div className="space-y-1">
+        {files.map((f, i) => (
+          <div
+            key={f}
+            onClick={() => repoId && navigate(`/dashboard/repo-health/${repoId}`)}
+            className="flex items-center gap-3 px-3 py-2 text-xs font-mono cursor-pointer hover:bg-[rgba(255,43,214,0.05)] transition-colors"
+            style={{ borderLeft: "2px solid var(--neon-magenta)" }}
+          >
+            <span style={{ color: "var(--text-muted)", width: 24 }}>
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span style={{ color: "var(--neon-cyan)" }} className="flex-1 truncate">
+              {f}
+            </span>
+            <span style={{ color: "var(--neon-magenta)" }}>HOT</span>
           </div>
         ))}
       </div>

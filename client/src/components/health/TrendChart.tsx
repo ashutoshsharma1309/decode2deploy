@@ -1,4 +1,13 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 interface Point {
   score: number;
@@ -12,11 +21,17 @@ interface Props {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="clay p-3" style={{ borderRadius: '10px', fontSize: '11px' }}>
-      <p className="text-muted-foreground mb-1">{label}</p>
+    <div
+      className="panel p-3 text-[11px] font-mono"
+      style={{ borderColor: "var(--neon-cyan)" }}
+    >
+      <p style={{ color: "var(--text-secondary)" }} className="mb-1">
+        {label}
+      </p>
       {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color }} className="font-medium">
-          Score: {p.value}
+        <p key={i} style={{ color: "var(--neon-cyan)" }}>
+          {"> SCORE: "}
+          {p.value}
         </p>
       ))}
     </div>
@@ -24,26 +39,55 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export function TrendChart({ data }: Props) {
-  const formatted = data.map(d => ({
+  const formatted = data.map((d) => ({
     score: d.score,
-    date:  new Date(d.computedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: new Date(d.computedAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
   }));
 
   if (formatted.length === 0) return null;
 
   return (
-    <div className="clay p-5" style={{ borderRadius: '20px' }}>
-      <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider mb-4">
-        90-day health trend
-      </p>
-      <ResponsiveContainer width="100%" height={200}>
+    <div className="panel p-5">
+      <p className="label-mono mb-4">90-DAY HEALTH TREND</p>
+      <ResponsiveContainer width="100%" height={220}>
         <LineChart data={formatted}>
-          <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} width={28} axisLine={false} tickLine={false} />
+          <CartesianGrid stroke="var(--grid-line)" strokeDasharray="2 2" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
+            interval="preserveStartEnd"
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
+            width={28}
+            axisLine={false}
+            tickLine={false}
+          />
           <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={80} stroke="#16a34a" strokeDasharray="4 2" label={{ value: 'Good', fontSize: 10, fill: '#16a34a', position: 'right' }} />
-          <ReferenceLine y={60} stroke="#d97706" strokeDasharray="4 2" label={{ value: 'Watch', fontSize: 10, fill: '#d97706', position: 'right' }} />
-          <Line type="monotone" dataKey="score" stroke="#2563ab" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+          <ReferenceLine
+            y={75}
+            stroke="var(--neon-lime)"
+            strokeDasharray="4 2"
+          />
+          <ReferenceLine
+            y={50}
+            stroke="var(--neon-amber)"
+            strokeDasharray="4 2"
+          />
+          <Line
+            type="monotone"
+            dataKey="score"
+            stroke="var(--neon-cyan)"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4, fill: "var(--neon-cyan)" }}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -1,12 +1,7 @@
 import { RepoContext }    from '../models/RepoContext';
-import { Review }         from '../models/Review';
 import FilePushHistory   from '../models/FilePushHistory';
 import RepoHealthSnapshot from '../models/RepoHealthSnapshot';
 import mongoose          from 'mongoose';
-
-const SEVERITY_WEIGHTS: Record<string, number> = {
-  critical: 10, high: 5, medium: 2, low: 1, info: 0,
-};
 
 export function computeGini(sorted: number[]): number {
   const n = sorted.length;
@@ -26,10 +21,9 @@ export function percentile(sorted: number[], pct: number): number {
 export async function computeAndSaveHealthScore(
   repoId: mongoose.Types.ObjectId,
 ): Promise<void> {
-  const [ctx, pushHistory, reviews] = await Promise.all([
+  const [ctx, pushHistory] = await Promise.all([
     RepoContext.findOne({ repoId }),
     FilePushHistory.find({ repoId }).sort({ pushedAt: -1 }).limit(30),
-    Review.find({ repoId }).sort({ createdAt: -1 }).limit(30),
   ]);
 
   if (!ctx) return;
@@ -62,20 +56,13 @@ export async function computeAndSaveHealthScore(
   );
   const s2 = Math.min(hotFiles.length / 10, 1);
 
-  // Signal 3: Findings debt
-  let totalDebt = 0;
-  for (const review of reviews)
-    for (const agent of review.agentReports)
-      for (const finding of (agent.findings ?? []))
-        totalDebt += SEVERITY_WEIGHTS[finding.severity] ?? 0;
+  // Signal 3: Findings debt — review pipeline removed, neutral default.
+  const totalDebt = 0;
+  const avgDebt = 0;
+  const s3 = 0;
 
-  const avgDebt = totalDebt / Math.max(reviews.length, 1);
-  const s3 = Math.min(avgDebt / 50, 1);
-
-  // Signal 4: Confidence trend
-  const avgConf = reviews.length > 0
-    ? reviews.reduce((s, r) => s + (r.confidenceScore ?? 70), 0) / reviews.length
-    : 70;
+  // Signal 4: Confidence trend — review pipeline removed, neutral default.
+  const avgConf = 70;
   const s4 = avgConf / 100;
 
   // Composite score
@@ -93,7 +80,7 @@ export async function computeAndSaveHealthScore(
     hotFiles: hotFiles.slice(0, 10),
     totalDefinitions: ctx.definitions.length,
     totalFiles: ctx.fileTree?.length ?? 0,
-    prCount: reviews.length,
+    prCount: 0,
     computedAt: new Date(),
   });
 }

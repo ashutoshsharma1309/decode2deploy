@@ -1,35 +1,35 @@
-type SignalType = 'coupling' | 'churnRisk' | 'debt' | 'confidence';
+type SignalType = "coupling" | "churnRisk" | "debt" | "confidence";
 
-const SIGNAL_META: Record<SignalType, { label: string; description: (v: any) => string; icon: string }> = {
-  coupling:   {
-    label: 'Coupling',
-    description: (v) => v.normalized < 0.2
-      ? 'Modular — dependencies well distributed'
-      : v.normalized < 0.5
-      ? 'Some centralisation — a few key files'
-      : 'High coupling — god-files detected',
-    icon: 'GitBranch',
+const SIGNAL_META: Record<
+  SignalType,
+  { label: string; description: (v: any) => string }
+> = {
+  coupling: {
+    label: "COUPLING",
+    description: (v) =>
+      v.normalized < 0.2
+        ? "MODULAR — DEPS WELL DISTRIBUTED"
+        : v.normalized < 0.5
+          ? "PARTIAL CENTRALIZATION"
+          : "HIGH COUPLING — GOD-FILES DETECTED",
   },
-  churnRisk:  {
-    label: 'Churn Risk',
-    description: (v) => v.hotFileCount === 0
-      ? 'No blast-radius files detected'
-      : `${v.hotFileCount} high-centrality file${v.hotFileCount > 1 ? 's' : ''} changing frequently`,
-    icon: 'Flame',
+  churnRisk: {
+    label: "CHURN RISK",
+    description: (v) =>
+      v.hotFileCount === 0
+        ? "NO BLAST-RADIUS FILES"
+        : `${v.hotFileCount} HIGH-CENTRALITY FILE${
+            v.hotFileCount > 1 ? "S" : ""
+          } CHANGING FREQUENTLY`,
   },
-  debt:       {
-    label: 'Findings Debt',
-    description: (v) => v.avgPerPR < 5
-      ? 'Low debt — clean review history'
-      : v.avgPerPR < 20
-      ? `${v.avgPerPR.toFixed(1)} avg weighted findings per PR`
-      : 'High debt — recurring unresolved findings',
-    icon: 'AlertOctagon',
+  debt: {
+    label: "FINDINGS DEBT",
+    description: () => "AGENT FINDINGS PIPELINE OFFLINE",
   },
   confidence: {
-    label: 'AI Confidence',
-    description: (v) => `${Math.round(v.rollingAvg)}/100 avg confidence across last 30 reviews`,
-    icon: 'Brain',
+    label: "CONFIDENCE",
+    description: (v) =>
+      `${Math.round(v.rollingAvg)}/100 ROLLING SIGNAL`,
   },
 };
 
@@ -39,24 +39,51 @@ interface Props {
 }
 
 export function SignalCard({ signal, value }: Props) {
-  const meta     = SIGNAL_META[signal];
-  const pct      = signal === 'confidence'
-    ? Math.round(value.normalized * 100)
-    : Math.round(value.normalized * 100);
-  const isGood   = signal === 'confidence' ? pct >= 70 : pct < 40;
-  const isBad    = signal === 'confidence' ? pct < 40  : pct >= 70;
-  const barColor = isGood ? '#16a34a' : isBad ? '#dc2626' : '#d97706';
+  const meta = SIGNAL_META[signal];
+  const pct = Math.round(value.normalized * 100);
+  const score =
+    signal === "confidence" ? pct : 100 - pct;
+  const color =
+    score >= 75
+      ? "var(--neon-lime)"
+      : score >= 50
+        ? "var(--neon-amber)"
+        : "var(--neon-red)";
 
   return (
-    <div className="clay p-5" style={{ borderRadius: '20px' }}>
+    <div className="panel p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium">{meta.label}</span>
-        <span className="text-lg font-bold font-mono" style={{ color: barColor }}>{pct}%</span>
+        <span className="label-mono">{meta.label}</span>
+        <span
+          className="heading-display text-2xl"
+          style={{ color, textShadow: "0 0 8px currentColor" }}
+        >
+          {score}
+        </span>
       </div>
-      <div className="w-full h-2 bg-gray-800/30 rounded-full mb-3">
-        <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
+      <div
+        className="w-full h-1 mb-3 relative"
+        style={{ background: "rgba(0, 240, 255, 0.08)" }}
+      >
+        <div
+          className="absolute inset-y-0 left-0 transition-all"
+          style={{
+            width: `${score}%`,
+            background: color,
+            boxShadow: `0 0 8px ${color}`,
+          }}
+        />
       </div>
-      <p className="text-xs text-gray-400 leading-relaxed">{meta.description(value)}</p>
+      <p
+        className="text-[10px] leading-relaxed"
+        style={{
+          color: "var(--text-secondary)",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        {"> "}
+        {meta.description(value)}
+      </p>
     </div>
   );
 }

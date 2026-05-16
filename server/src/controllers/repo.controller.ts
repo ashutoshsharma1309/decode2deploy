@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { User } from "../models/User";
 import { Repo } from "../models/Repo";
-import { PR } from "../models/PR";
 import { RepoContext } from "../models/RepoContext";
 import {
   getInstallationToken,
@@ -245,17 +244,6 @@ export async function connectRepo(req: Request, res: Response): Promise<void> {
     }
 
     res.status(201).json({ repo });
-
-    // Async: sync existing PRs from GitHub (don't block the response)
-    if (user.githubInstallationId) {
-      getInstallationToken(user.githubInstallationId)
-        .then((token) =>
-          syncPRsFromGitHub(repo._id.toString(), fullName, token),
-        )
-        .catch((err) =>
-          console.error("[Repo] Background PR sync failed:", err.message),
-        );
-    }
   } catch (err) {
     console.error("[Repo] connect error:", err);
     res.status(500).json({ error: "Server error" });
@@ -363,133 +351,11 @@ export async function updateRepoSettings(
 }
 
 /**
- * Sync PRs from GitHub for a given repo.
- * Fetches open PRs + recently closed/merged PRs and upserts them into the DB.
- * Called automatically on repo connect, and available as a manual endpoint.
- */
-async function syncPRsFromGitHub(
-  repoId: string,
-  repoFullName: string,
-  installationToken: string,
-): Promise<number> {
-  let synced = 0;
-
-  // Fetch open PRs (all pages)
-  const openPRs = await fetchGitHubPRs(
-    repoFullName,
-    installationToken,
-    "open",
-    100,
-  );
-  // Fetch recently closed PRs (last 30)
-  const closedPRs = await fetchGitHubPRs(
-    repoFullName,
-    installationToken,
-    "closed",
-    30,
-  );
-
-  const allPRs = [...openPRs, ...closedPRs];
-
-  for (const ghPR of allPRs) {
-    try {
-      await PR.findOneAndUpdate(
-        { repoId, prNumber: ghPR.number },
-        {
-          repoId,
-          prNumber: ghPR.number,
-          title: ghPR.title,
-          body: ghPR.body || "",
-          author: {
-            login: ghPR.user?.login || "unknown",
-            avatarUrl: ghPR.user?.avatar_url || "",
-          },
-          headSha: ghPR.head?.sha || "",
-          baseBranch: ghPR.base?.ref || "main",
-          headBranch: ghPR.head?.ref || "",
-          diffUrl: ghPR.diff_url || "",
-          status: ghPR.state === "open" ? "pending" : "reviewed",
-          githubPRId: ghPR.number,
-          githubCreatedAt: ghPR.created_at
-            ? new Date(ghPR.created_at)
-            : undefined,
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      );
-      synced++;
-    } catch (err: any) {
-      console.error(`[Repo] Failed to sync PR #${ghPR.number}:`, err.message);
-    }
-  }
-
-  console.log(`[Repo] Synced ${synced} PRs for ${repoFullName}`);
-  return synced;
-}
-
-async function fetchGitHubPRs(
-  repoFullName: string,
-  token: string,
-  state: "open" | "closed",
-  maxCount: number,
-): Promise<any[]> {
-  const prs: any[] = [];
-  let page = 1;
-  const perPage = Math.min(maxCount, 100);
-
-  while (prs.length < maxCount) {
-    const res = await githubAppFetch(
-      `/repos/${repoFullName}/pulls?state=${state}&sort=updated&direction=desc&per_page=${perPage}&page=${page}`,
-      token,
-    );
-    if (!res.ok) break;
-
-    const batch = (await res.json()) as any[];
-    if (!batch || batch.length === 0) break;
-
-    prs.push(...batch);
-    if (batch.length < perPage) break;
-    page++;
-  }
-
-  return prs.slice(0, maxCount);
-}
-
-/**
  * POST /repos/:id/sync
- * Manually trigger PR sync for a connected repo.
+ * Re-trigger context indexing for a connected repo.
  */
 export async function syncRepoPRs(req: Request, res: Response): Promise<void> {
-  try {
-    const repo = await Repo.findOne({
-      _id: req.params.id,
-      connectedBy: req.user!.userId,
-      isActive: true,
-    });
-    if (!repo) {
-      res.status(404).json({ error: "Repo not found" });
-      return;
-    }
-
-    const user = await User.findById(req.user!.userId);
-    if (!user?.githubInstallationId) {
-      res.status(400).json({ error: "No GitHub App installation found" });
-      return;
-    }
-
-    // Respond immediately — sync runs in background
-    res.json({ message: "PR sync started" });
-
-    const token = await getInstallationToken(user.githubInstallationId);
-    const synced = await syncPRsFromGitHub(
-      repo._id.toString(),
-      repo.fullName,
-      token,
-    );
-    console.log(`[Repo] Sync completed: ${synced} PRs for ${repo.fullName}`);
-  } catch (err: any) {
-    console.error("[Repo] sync error:", err.message);
-    // Response already sent, just log
-  }
+  return triggerContextIndex(req, res);
 }
 
 /**

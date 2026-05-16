@@ -1,21 +1,32 @@
-import { Activity } from 'lucide-react';
-
 interface Props {
   repoName?: string;
 }
 
 export function EmptyHealth({ repoName }: Props) {
   return (
-    <div className="clay-card flex flex-col items-center justify-center py-16 gap-4">
-      <Activity size={40} className="text-gray-400" />
-      <h3 className="text-lg font-medium">No health data yet</h3>
-      <p className="text-sm text-gray-400 text-center max-w-sm">
-        {repoName
-          ? `Health data for ${repoName} will appear after the next push to main.`
-          : 'Health data will appear after the next push to main triggers the context indexer.'}
+    <div className="panel p-12 flex flex-col items-center text-center gap-3">
+      <p
+        className="heading-display text-xl text-glow-cyan"
+        style={{ color: "var(--neon-cyan)" }}
+      >
+        NO TELEMETRY YET
       </p>
-      <p className="text-xs text-gray-500">
-        The score is computed automatically on every push — no action required.
+      <p
+        className="text-xs label-mono"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        {repoName
+          ? `/ / HEALTH SCAN FOR ${repoName} WILL APPEAR AFTER NEXT PUSH`
+          : "/ / HEALTH SCAN APPEARS AFTER PUSH TO DEFAULT BRANCH"}
+      </p>
+      <p
+        className="text-[10px] mt-2"
+        style={{
+          color: "var(--text-muted)",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        {"> SCORE COMPUTED AUTOMATICALLY ON EVERY PUSH"}
       </p>
     </div>
   );

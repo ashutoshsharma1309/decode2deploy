@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Loader2, AlertCircle } from "lucide-react";
 
 export default function OAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -18,64 +17,58 @@ export default function OAuthCallback() {
       return;
     }
 
-    // Store tokens
     localStorage.setItem("access_token", accessToken);
     localStorage.setItem("refresh_token", refreshToken);
 
-    // Fetch user and redirect
     refreshUser()
-      .then(() => {
-        navigate("/dashboard/getting-started", { replace: true });
-      })
-      .catch(() => {
-        setError("Failed to load your profile. Please try again.");
-      });
+      .then(() => navigate("/dashboard/repos", { replace: true }))
+      .catch(() => setError("Failed to load profile."));
   }, [searchParams, navigate, refreshUser]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
-      {/* Background layers */}
-      <div className="absolute inset-0 hero-grid pointer-events-none" />
-      <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/[0.06] rounded-full blur-[180px] pointer-events-none" />
-
-      <div className="relative z-10 w-full max-w-sm">
-        <div className="clay-xl p-2" style={{ borderRadius: "28px" }}>
-          <div
-            className="clay p-8 flex flex-col items-center gap-5"
-            style={{ borderRadius: "22px" }}
+    <div className="relative min-h-screen flex items-center justify-center px-4">
+      <div className="radial-sweep" />
+      <div className="panel relative z-10 p-10 max-w-sm w-full text-center">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <span className="pulse-dot" />
+          <span
+            className="heading-display text-xl text-glow-cyan"
+            style={{ color: "var(--neon-cyan)" }}
           >
-            <img
-              src="/logo.png"
-              alt="LGTM"
-              className="w-14 h-14 rounded-full scale-125"
-            />
-
-            {error ? (
-              <>
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="w-5 h-5" />
-                  <p className="text-sm font-medium">Auth failed</p>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">
-                  {error}
-                </p>
-                <a
-                  href="/login"
-                  className="clay-btn clay-btn-ghost px-6 py-2.5 text-sm"
-                >
-                  Back to login
-                </a>
-              </>
-            ) : (
-              <>
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                <p className="text-sm text-muted-foreground">
-                  Signing you in...
-                </p>
-              </>
-            )}
-          </div>
+            PULSE
+          </span>
         </div>
+        {error ? (
+          <>
+            <p
+              className="label-mono mb-2"
+              style={{ color: "var(--neon-red)" }}
+            >
+              AUTH FAILED
+            </p>
+            <p
+              className="text-xs mb-6"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {error}
+            </p>
+            <a href="/login" className="btn-neon">
+              {"< BACK TO LOGIN"}
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="label-mono">
+              {"> COMPLETING HANDSHAKE"}
+              <span
+                className="cursor-blink"
+                style={{ color: "var(--neon-cyan)" }}
+              >
+                _
+              </span>
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

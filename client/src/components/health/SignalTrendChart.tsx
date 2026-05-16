@@ -1,4 +1,12 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 interface DataPoint {
   computedAt: string;
@@ -15,10 +23,12 @@ interface Props {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="clay p-3" style={{ borderRadius: '10px', fontSize: '11px' }}>
-      <p className="text-muted-foreground mb-1">{label}</p>
+    <div className="panel p-3 text-[11px] font-mono">
+      <p style={{ color: "var(--text-secondary)" }} className="mb-1">
+        {label}
+      </p>
       {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color }} className="font-medium">
+        <p key={i} style={{ color: p.color }}>
           {p.name}: {Math.round(p.value * 100)}%
         </p>
       ))}
@@ -26,9 +36,19 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+const COLORS = {
+  coupling: "var(--neon-cyan)",
+  churnRisk: "var(--neon-magenta)",
+  debt: "var(--neon-amber)",
+  confidence: "var(--neon-lime)",
+};
+
 export function SignalTrendChart({ data }: Props) {
-  const formatted = data.map(d => ({
-    date: new Date(d.computedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  const formatted = data.map((d) => ({
+    date: new Date(d.computedAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
     coupling: d.coupling,
     churnRisk: d.churnRisk,
     debt: d.debt,
@@ -38,23 +58,21 @@ export function SignalTrendChart({ data }: Props) {
   if (formatted.length === 0) return null;
 
   return (
-    <div className="clay p-5" style={{ borderRadius: '20px' }}>
-      <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider mb-4">
-        Signal Trends (Normalized)
-      </p>
+    <div className="panel p-5">
+      <p className="label-mono mb-4">SIGNAL TRENDS</p>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={formatted} margin={{ left: -20, right: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <CartesianGrid stroke="var(--grid-line)" strokeDasharray="2 2" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: '#94a3b8' }}
+            tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
           />
           <YAxis
             domain={[0, 1]}
-            tick={{ fontSize: 10, fill: '#94a3b8' }}
+            tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `${Math.round(v * 100)}%`}
@@ -64,57 +82,46 @@ export function SignalTrendChart({ data }: Props) {
             type="monotone"
             dataKey="coupling"
             name="Coupling"
-            stroke="#f59e0b"
-            strokeWidth={2}
+            stroke={COLORS.coupling}
+            strokeWidth={1.5}
             dot={false}
-            activeDot={{ r: 4 }}
           />
           <Line
             type="monotone"
             dataKey="churnRisk"
-            name="Churn Risk"
-            stroke="#ef4444"
-            strokeWidth={2}
+            name="Churn"
+            stroke={COLORS.churnRisk}
+            strokeWidth={1.5}
             dot={false}
-            activeDot={{ r: 4 }}
           />
           <Line
             type="monotone"
             dataKey="debt"
             name="Debt"
-            stroke="#fbbf24"
-            strokeWidth={2}
+            stroke={COLORS.debt}
+            strokeWidth={1.5}
             dot={false}
-            activeDot={{ r: 4 }}
           />
           <Line
             type="monotone"
             dataKey="confidence"
             name="Confidence"
-            stroke="#4ade80"
-            strokeWidth={2}
+            stroke={COLORS.confidence}
+            strokeWidth={1.5}
             dot={false}
-            activeDot={{ r: 4 }}
           />
         </LineChart>
       </ResponsiveContainer>
       <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-          <span className="text-[10px] text-muted-foreground">Coupling</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-          <span className="text-[10px] text-muted-foreground">Churn Risk</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#fbbf24]" />
-          <span className="text-[10px] text-muted-foreground">Debt</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#4ade80]" />
-          <span className="text-[10px] text-muted-foreground">Confidence</span>
-        </div>
+        {Object.entries(COLORS).map(([k, c]) => (
+          <div key={k} className="flex items-center gap-1.5">
+            <span
+              className="w-2 h-2"
+              style={{ background: c, boxShadow: `0 0 6px ${c}` }}
+            />
+            <span className="text-[10px] label-mono">{k}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
