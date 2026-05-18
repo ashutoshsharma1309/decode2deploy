@@ -20,27 +20,30 @@ interface Props {
   data: DataPoint[];
 }
 
+const COLORS = {
+  coupling: "#1a1f2e",
+  churnRisk: "#ff5fc8",
+  debt: "#ffb800",
+  confidence: "#00d97f",
+};
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="panel p-3 text-[11px] font-mono">
+    <div
+      className="card-light p-3 text-xs"
+      style={{ fontFamily: "var(--font-mono)" }}
+    >
       <p style={{ color: "var(--text-secondary)" }} className="mb-1">
         {label}
       </p>
       {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color }}>
+        <p key={i} style={{ color: p.color, fontWeight: 600 }}>
           {p.name}: {Math.round(p.value * 100)}%
         </p>
       ))}
     </div>
   );
-};
-
-const COLORS = {
-  coupling: "var(--neon-cyan)",
-  churnRisk: "var(--neon-magenta)",
-  debt: "var(--neon-amber)",
-  confidence: "var(--neon-lime)",
 };
 
 export function SignalTrendChart({ data }: Props) {
@@ -58,21 +61,24 @@ export function SignalTrendChart({ data }: Props) {
   if (formatted.length === 0) return null;
 
   return (
-    <div className="panel p-5">
-      <p className="label-mono mb-4">SIGNAL TRENDS</p>
+    <div className="card-light p-6">
+      <p className="eyebrow mb-4">SIGNAL TRENDS</p>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={formatted} margin={{ left: -20, right: 8 }}>
-          <CartesianGrid stroke="var(--grid-line)" strokeDasharray="2 2" />
+          <CartesianGrid
+            stroke="rgba(26, 31, 46, 0.06)"
+            strokeDasharray="2 2"
+          />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
+            tick={{ fontSize: 10, fill: "#5b6478" }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
           />
           <YAxis
             domain={[0, 1]}
-            tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
+            tick={{ fontSize: 10, fill: "#5b6478" }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `${Math.round(v * 100)}%`}
@@ -112,14 +118,16 @@ export function SignalTrendChart({ data }: Props) {
           />
         </LineChart>
       </ResponsiveContainer>
-      <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
+      <div className="flex items-center justify-center gap-5 mt-4 flex-wrap">
         {Object.entries(COLORS).map(([k, c]) => (
-          <div key={k} className="flex items-center gap-1.5">
+          <div key={k} className="flex items-center gap-2">
             <span
               className="w-2 h-2"
-              style={{ background: c, boxShadow: `0 0 6px ${c}` }}
+              style={{ background: c, borderRadius: 1 }}
             />
-            <span className="text-[10px] label-mono">{k}</span>
+            <span className="eyebrow" style={{ letterSpacing: "0.14em" }}>
+              {k}
+            </span>
           </div>
         ))}
       </div>

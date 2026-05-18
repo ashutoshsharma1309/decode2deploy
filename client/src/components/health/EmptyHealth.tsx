@@ -4,28 +4,22 @@ interface Props {
 
 export function EmptyHealth({ repoName }: Props) {
   return (
-    <div className="panel p-12 flex flex-col items-center text-center gap-3">
+    <div className="card-light p-12 flex flex-col items-center text-center gap-3">
       <p
-        className="heading-display text-xl text-glow-cyan"
-        style={{ color: "var(--neon-cyan)" }}
+        className="heading-display text-2xl"
+        style={{ color: "var(--ink)" }}
       >
-        NO TELEMETRY YET
+        No telemetry yet
       </p>
       <p
-        className="text-xs label-mono"
+        className="text-sm max-w-md"
         style={{ color: "var(--text-secondary)" }}
       >
         {repoName
-          ? `/ / HEALTH SCAN FOR ${repoName} WILL APPEAR AFTER NEXT PUSH`
-          : "/ / HEALTH SCAN APPEARS AFTER PUSH TO DEFAULT BRANCH"}
+          ? `Health scan for ${repoName} appears after the next push to the default branch.`
+          : "Health scan appears after the next push to the default branch."}
       </p>
-      <p
-        className="text-[10px] mt-2"
-        style={{
-          color: "var(--text-muted)",
-          fontFamily: "var(--font-mono)",
-        }}
-      >
+      <p className="eyebrow mt-2">
         {"> SCORE COMPUTED AUTOMATICALLY ON EVERY PUSH"}
       </p>
     </div>

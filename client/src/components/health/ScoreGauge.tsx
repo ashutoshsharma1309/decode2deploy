@@ -5,11 +5,7 @@ interface Props {
 
 export function ScoreGauge({ score, computedAt }: Props) {
   const color =
-    score >= 75
-      ? "var(--neon-lime)"
-      : score >= 50
-        ? "var(--neon-amber)"
-        : "var(--neon-red)";
+    score >= 75 ? "#00d97f" : score >= 50 ? "#ffb800" : "#ef4444";
   const label = score >= 75 ? "HEALTHY" : score >= 50 ? "WATCH" : "CRITICAL";
   const r = 54;
   const cx = 70;
@@ -18,14 +14,14 @@ export function ScoreGauge({ score, computedAt }: Props) {
   const dash = (score / 100) * circ;
 
   return (
-    <div className="panel p-6 flex flex-col items-center gap-3">
-      <p className="label-mono">HEALTH SCORE</p>
-      <svg viewBox="0 0 140 140" width="160" height="160">
+    <div className="card-light flex flex-col items-center gap-4 p-8">
+      <p className="eyebrow">HEALTH SCORE</p>
+      <svg viewBox="0 0 140 140" width="180" height="180">
         <defs>
-          <filter id="glow-gauge">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+          <filter id="gauge-glow">
+            <feGaussianBlur stdDeviation="1.5" />
             <feMerge>
-              <feMergeNode in="blur" />
+              <feMergeNode />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
@@ -35,8 +31,8 @@ export function ScoreGauge({ score, computedAt }: Props) {
           cy={cy}
           r={r}
           fill="none"
-          stroke="rgba(0, 240, 255, 0.08)"
-          strokeWidth="8"
+          stroke="rgba(26, 31, 46, 0.08)"
+          strokeWidth="9"
         />
         <circle
           cx={cx}
@@ -44,47 +40,59 @@ export function ScoreGauge({ score, computedAt }: Props) {
           r={r}
           fill="none"
           stroke={color}
-          strokeWidth="8"
+          strokeWidth="9"
           strokeDasharray={`${dash} ${circ - dash}`}
           strokeLinecap="round"
           transform={`rotate(-90 ${cx} ${cy})`}
-          filter="url(#glow-gauge)"
+          style={{
+            transition: "stroke-dasharray 600ms ease",
+          }}
+          filter="url(#gauge-glow)"
         />
         <text
           x={cx}
           y={cy + 8}
           textAnchor="middle"
-          fontSize="32"
+          fontSize="34"
           fontWeight="700"
-          fontFamily="var(--font-display)"
-          fill={color}
-          style={{ filter: "drop-shadow(0 0 6px currentColor)" }}
+          fontFamily="Space Grotesk, sans-serif"
+          fill="#1a1f2e"
         >
           {score}
         </text>
         <text
           x={cx}
-          y={cy + 28}
+          y={cy + 26}
           textAnchor="middle"
           fontSize="9"
-          fontFamily="var(--font-mono)"
-          fill="var(--text-secondary)"
+          fontFamily="JetBrains Mono, monospace"
+          fill="#5b6478"
           letterSpacing="2"
         >
           / 100
         </text>
       </svg>
-      <p
-        className="label-mono"
-        style={{ color, letterSpacing: "0.2em", fontSize: 11 }}
+      <span
+        className="status-pill"
+        style={{
+          color,
+          borderColor: color,
+          background: "transparent",
+          border: `1px solid ${color}`,
+        }}
       >
         {label}
-      </p>
+      </span>
       <p
         className="text-[10px]"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
+        style={{
+          color: "var(--text-muted)",
+          fontFamily: "var(--font-mono)",
+          letterSpacing: "0.1em",
+        }}
       >
-        UPDATED {new Date(computedAt).toISOString().slice(0, 19).replace("T", " ")}
+        UPDATED{" "}
+        {new Date(computedAt).toISOString().slice(0, 19).replace("T", " ")}
       </p>
     </div>
   );

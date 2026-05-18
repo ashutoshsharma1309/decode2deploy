@@ -12,11 +12,20 @@ export default function ProtectedRoute({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ background: "var(--bg-base)" }}
+        style={{ background: "var(--cream)" }}
       >
-        <p className="label-mono">
-          {"> AUTHENTICATING"}
-          <span className="cursor-blink" style={{ color: "var(--neon-cyan)" }}>
+        <p
+          className="text-sm"
+          style={{
+            color: "var(--text-secondary)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          {"> authenticating"}
+          <span
+            className="cursor-blink"
+            style={{ color: "var(--green)" }}
+          >
             _
           </span>
         </p>

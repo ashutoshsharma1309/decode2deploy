@@ -1,14 +1,33 @@
-import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import api from "../../api/axios";
 
 const NAV_ITEMS = [
-  { label: "REPOS", path: "/dashboard/repos" },
-  { label: "REPO HEALTH", path: "/dashboard/repo-health" },
-  { label: "KNOWLEDGE GRAPH", path: "__graph__" },
-  { label: "SETTINGS", path: "/dashboard/settings" },
+  { label: "Repos", path: "/dashboard/repos" },
+  { label: "Repo Health", path: "/dashboard/repo-health" },
+  { label: "Complexity", path: "/dashboard/complexity" },
+  { label: "Settings", path: "/dashboard/settings" },
 ];
+
+function BrandMark() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <path
+        d="M16 3 L27 9 L27 23 L16 29 L5 23 L5 9 Z"
+        stroke="#1a1f2e"
+        strokeWidth="2"
+        fill="none"
+      />
+      <path
+        d="M9 16 L12 16 L14 12 L18 20 L20 16 L23 16"
+        stroke="#00d97f"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -18,31 +37,11 @@ export default function DashboardLayout({
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [firstRepoId, setFirstRepoId] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .get("/repos")
-      .then(({ data }) => {
-        const first = (data.repos || [])[0];
-        if (first) setFirstRepoId(first._id);
-      })
-      .catch(() => {});
-  }, []);
+  const handleNav = (path: string) => navigate(path);
 
-  const handleNav = (path: string) => {
-    if (path === "__graph__") {
-      if (firstRepoId) navigate(`/repos/${firstRepoId}/graph`);
-      else navigate("/dashboard/repos");
-    } else {
-      navigate(path);
-    }
-  };
-
-  const isActive = (path: string) => {
-    if (path === "__graph__") return location.pathname.includes("/graph");
-    return location.pathname === path || location.pathname.startsWith(path + "/");
-  };
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
 
   const handleSignOut = async () => {
     await logout();
@@ -50,53 +49,64 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: "var(--bg-base)" }}>
+    <div
+      className="min-h-screen flex"
+      style={{ background: "var(--cream)" }}
+    >
       <aside
         className="hidden md:flex flex-col"
         style={{
-          width: "240px",
-          background: "var(--bg-panel)",
-          borderRight: "1px solid var(--border-strong)",
+          width: 240,
+          background: "var(--paper)",
+          borderRight: "1px solid var(--border-ink)",
         }}
       >
-        <div className="px-6 py-6 flex items-center gap-3">
-          <span className="pulse-dot" />
+        <div
+          className="px-6 py-6 flex items-center gap-3 cursor-pointer"
+          onClick={() => navigate("/")}
+        >
+          <BrandMark />
           <span
-            className="heading-display text-xl text-glow-cyan cursor-pointer"
-            style={{ color: "var(--neon-cyan)" }}
-            onClick={() => navigate("/")}
+            className="heading-display text-lg"
+            style={{ color: "var(--ink)" }}
           >
-            PULSE
+            CodePulse
           </span>
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.path);
             return (
               <button
                 key={item.path}
                 onClick={() => handleNav(item.path)}
-                className="w-full text-left px-4 py-2 text-xs label-mono transition-all flex items-center gap-2 relative"
+                className="w-full text-left px-4 py-2.5 text-sm transition-all relative"
                 style={{
-                  color: active ? "var(--neon-cyan)" : "var(--text-secondary)",
-                  background: active
-                    ? "rgba(0, 240, 255, 0.06)"
-                    : "transparent",
+                  color: active ? "var(--ink)" : "var(--text-secondary)",
+                  background: active ? "rgba(0, 217, 127, 0.10)" : "transparent",
                   borderLeft: active
-                    ? "2px solid var(--neon-cyan)"
+                    ? "2px solid var(--green)"
                     : "2px solid transparent",
-                  paddingLeft: "14px",
+                  paddingLeft: 14,
+                  fontFamily: "var(--font-display)",
+                  fontWeight: active ? 600 : 500,
+                  borderRadius: 2,
                 }}
                 onMouseEnter={(e) => {
-                  if (!active) e.currentTarget.style.color = "var(--neon-cyan)";
+                  if (!active) {
+                    e.currentTarget.style.color = "var(--ink)";
+                    e.currentTarget.style.background =
+                      "rgba(26, 31, 46, 0.04)";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!active)
+                  if (!active) {
                     e.currentTarget.style.color = "var(--text-secondary)";
+                    e.currentTarget.style.background = "transparent";
+                  }
                 }}
               >
-                {"> "}
                 {item.label}
               </button>
             );
@@ -105,7 +115,7 @@ export default function DashboardLayout({
 
         <div
           className="px-4 py-4 border-t"
-          style={{ borderColor: "var(--border-default)" }}
+          style={{ borderColor: "var(--border-ink)" }}
         >
           <div className="flex items-center gap-3 mb-3">
             {user?.avatarUrl ? (
@@ -113,15 +123,17 @@ export default function DashboardLayout({
                 src={user.avatarUrl}
                 alt={user.username}
                 className="w-8 h-8 rounded-sm"
-                style={{ border: "1px solid var(--border-strong)" }}
+                style={{ border: "1px solid var(--border-ink-2)" }}
               />
             ) : (
               <div
                 className="w-8 h-8 flex items-center justify-center text-xs"
                 style={{
-                  background: "var(--bg-elevated)",
-                  color: "var(--neon-cyan)",
-                  border: "1px solid var(--border-strong)",
+                  background: "var(--ink)",
+                  color: "#fff",
+                  borderRadius: 2,
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 700,
                 }}
               >
                 {user?.username?.charAt(0).toUpperCase() || "?"}
@@ -129,8 +141,12 @@ export default function DashboardLayout({
             )}
             <div className="min-w-0 flex-1">
               <p
-                className="text-xs font-mono truncate"
-                style={{ color: "var(--text-primary)" }}
+                className="text-xs truncate"
+                style={{
+                  color: "var(--ink)",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 600,
+                }}
               >
                 {user?.username || "—"}
               </p>
@@ -138,10 +154,15 @@ export default function DashboardLayout({
           </div>
           <button
             onClick={handleSignOut}
-            className="text-[10px] label-mono"
-            style={{ color: "var(--neon-red)" }}
+            className="text-[11px] transition-colors"
+            style={{
+              color: "var(--red)",
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
           >
-            {"> SIGN OUT"}
+            Sign out
           </button>
         </div>
       </aside>
@@ -150,28 +171,28 @@ export default function DashboardLayout({
         <div
           className="md:hidden flex items-center justify-between px-4 py-3 border-b"
           style={{
-            borderColor: "var(--border-default)",
-            background: "var(--bg-panel)",
+            borderColor: "var(--border-ink)",
+            background: "var(--paper)",
           }}
         >
           <div className="flex items-center gap-2">
-            <span className="pulse-dot" />
+            <BrandMark />
             <span
               className="heading-display text-sm"
-              style={{ color: "var(--neon-cyan)" }}
+              style={{ color: "var(--ink)" }}
             >
-              PULSE
+              CodePulse
             </span>
           </div>
           <button
             onClick={handleSignOut}
-            className="text-[10px] label-mono"
-            style={{ color: "var(--neon-red)" }}
+            className="text-[10px] eyebrow"
+            style={{ color: "var(--red)" }}
           >
-            {"> SIGN OUT"}
+            Sign out
           </button>
         </div>
-        <div className="p-6 md:p-8">{children}</div>
+        <div className="p-6 md:p-10">{children}</div>
       </main>
     </div>
   );

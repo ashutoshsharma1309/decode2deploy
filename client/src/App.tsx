@@ -10,7 +10,7 @@ import Settings from "./pages/Settings";
 import Repos from "./pages/Repos";
 import RepoHealth from "./pages/RepoHealth";
 import CommitDiff from "./pages/CommitDiff";
-import KnowledgeGraph from "./pages/KnowledgeGraph";
+import Complexity from "./pages/Complexity";
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 
@@ -69,20 +69,22 @@ function App() {
                 }
               />
               <Route
+                path="/dashboard/complexity"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Complexity />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/dashboard/settings"
                 element={
                   <ProtectedRoute>
                     <DashboardLayout>
                       <Settings />
                     </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/repos/:repoId/graph"
-                element={
-                  <ProtectedRoute>
-                    <KnowledgeGraph />
                   </ProtectedRoute>
                 }
               />

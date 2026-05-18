@@ -5,7 +5,6 @@ import authRoutes from "./routes/auth.routes";
 import repoRoutes from "./routes/repo.routes";
 import webhookRoutes from "./routes/webhook.routes";
 import healthRoutes from "./routes/health.routes";
-import graphRoutes from "./routes/graph.routes";
 import { redis } from "./config/redis";
 import { contextQueue } from "./jobs/queue";
 import { getLLMPoolStats } from "./lib/llm-pool";
@@ -56,7 +55,6 @@ app.get("/healthz", (_req, res) => {
 app.use("/auth", authRoutes);
 app.use("/repos", repoRoutes);
 app.use("/webhooks", webhookRoutes);
-app.use("/api", graphRoutes);
 app.use("/health", healthRoutes);
 
 export default app;

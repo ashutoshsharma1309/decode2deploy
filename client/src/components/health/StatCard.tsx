@@ -8,20 +8,22 @@ interface Props {
 
 export function StatCard({ label, value, trend }: Props) {
   return (
-    <div className="panel p-4">
-      <p className="label-mono mb-2">{label}</p>
+    <div className="card-light p-5">
+      <p className="eyebrow mb-2">{label}</p>
       <div className="flex items-end gap-2">
         <p
-          className="heading-display text-2xl text-glow-cyan"
-          style={{ color: "var(--neon-cyan)" }}
+          className="heading-display text-3xl"
+          style={{ color: "var(--ink)" }}
         >
           {value}
         </p>
         {trend !== undefined && trend !== 0 && (
           <span
-            className="text-[10px] mb-1 font-mono"
+            className="text-[11px] mb-1.5"
             style={{
-              color: trend > 0 ? "var(--neon-lime)" : "var(--neon-red)",
+              color: trend > 0 ? "var(--green)" : "var(--red)",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 600,
             }}
           >
             {trend > 0 ? "+" : ""}

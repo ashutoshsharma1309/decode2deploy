@@ -33,22 +33,32 @@ interface ContextStatus {
 }
 
 function StatusPill({ status }: { status: string }) {
-  const map: Record<string, { color: string; label: string; pulse?: boolean }> = {
-    ready: { color: "var(--neon-cyan)", label: "READY" },
-    indexing: { color: "var(--neon-magenta)", label: "INDEXING", pulse: true },
-    failed: { color: "var(--neon-red)", label: "FAILED" },
-    idle: { color: "var(--text-muted)", label: "IDLE" },
+  const cls: Record<string, string> = {
+    ready: "status-pill-ready",
+    indexing: "status-pill-indexing",
+    failed: "status-pill-failed",
+    idle: "status-pill-idle",
   };
-  const cfg = map[status] || map.idle;
+  const label: Record<string, string> = {
+    ready: "READY",
+    indexing: "INDEXING",
+    failed: "FAILED",
+    idle: "IDLE",
+  };
   return (
-    <span className="status-pill" style={{ color: cfg.color }}>
-      {cfg.pulse && (
+    <span className={`status-pill ${cls[status] || cls.idle}`}>
+      {status === "indexing" && (
         <span
-          className="pulse-dot pulse-dot-magenta"
-          style={{ width: 6, height: 6 }}
+          className="pulse-dot-anim"
+          style={{
+            width: 6,
+            height: 6,
+            background: "#a3007a",
+            borderRadius: "50%",
+          }}
         />
       )}
-      {cfg.label}
+      {label[status] || "IDLE"}
     </span>
   );
 }
@@ -150,54 +160,62 @@ export default function Repos() {
   );
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="fade-up">
+      <div className="flex items-center justify-between mb-8 gap-4">
         <div>
-          <p className="label-mono mb-2">/ / CONNECTED REPOSITORIES</p>
+          <p className="eyebrow mb-2">/ / CONNECTED REPOSITORIES</p>
           <h1
-            className="heading-display text-3xl text-glow-cyan"
-            style={{ color: "var(--neon-cyan)" }}
+            className="heading-display text-4xl"
+            style={{ color: "var(--ink)" }}
           >
-            REPOS
+            Repos
           </h1>
         </div>
-        <button onClick={openModal} className="btn-neon">
-          {"> CONNECT REPO"}
+        <button onClick={openModal} className="hex-btn hex-btn-green">
+          + Connect repo
         </button>
       </div>
 
       {loading ? (
-        <p className="label-mono">{"> LOADING_"}</p>
+        <p
+          className="text-sm"
+          style={{
+            color: "var(--text-secondary)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          {"> loading_"}
+        </p>
       ) : connected.length === 0 ? (
-        <div className="panel p-12 text-center">
+        <div className="card-light p-12 text-center">
           <p
-            className="heading-display text-xl mb-4"
-            style={{ color: "var(--text-primary)" }}
+            className="heading-display text-2xl mb-3"
+            style={{ color: "var(--ink)" }}
           >
-            NO REPOS CONNECTED
+            No repos connected
           </p>
           <p
-            className="text-xs mb-6"
+            className="text-sm mb-8"
             style={{ color: "var(--text-secondary)" }}
           >
-            / / CONNECT A GITHUB REPOSITORY TO BEGIN INDEXING
+            Connect a GitHub repository to begin indexing health signals.
           </p>
-          <button onClick={openModal} className="btn-neon">
-            {"> CONNECT YOUR FIRST REPO"}
+          <button onClick={openModal} className="hex-btn hex-btn-green">
+            Connect your first repo
           </button>
         </div>
       ) : (
-        <div className="panel overflow-hidden">
+        <div className="card-light p-0 overflow-hidden">
           <div
-            className="grid grid-cols-12 gap-4 px-6 py-3 border-b label-mono"
-            style={{ borderColor: "var(--border-default)" }}
+            className="grid grid-cols-12 gap-4 px-6 py-3 border-b eyebrow"
+            style={{ borderColor: "var(--border-ink)" }}
           >
             <div className="col-span-5">REPOSITORY</div>
             <div className="col-span-2">STATUS</div>
             <div className="col-span-2">FILES</div>
             <div className="col-span-3 text-right">ACTIONS</div>
           </div>
-          {connected.map((r) => {
+          {connected.map((r, idx) => {
             const ctx = contexts[r._id] || {
               indexStatus: "idle",
               lastIndexedAt: null,
@@ -206,55 +224,78 @@ export default function Repos() {
             return (
               <div
                 key={r._id}
-                className="grid grid-cols-12 gap-4 px-6 py-4 border-b items-center text-sm hover:bg-[rgba(0,240,255,0.03)] transition-colors"
-                style={{ borderColor: "var(--border-default)" }}
+                className="grid grid-cols-12 gap-4 px-6 py-4 items-center text-sm transition-colors"
+                style={{
+                  borderTop:
+                    idx > 0 ? "1px solid var(--border-ink)" : "none",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(0,217,127,0.04)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
               >
-                <div className="col-span-5 font-mono">
-                  <p style={{ color: "var(--neon-cyan)" }}>{r.fullName}</p>
+                <div className="col-span-5">
                   <p
-                    className="text-[10px]"
-                    style={{ color: "var(--text-muted)" }}
+                    style={{
+                      color: "var(--ink)",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 600,
+                    }}
                   >
-                    ID: {r.githubRepoId}
+                    {r.fullName}
+                  </p>
+                  <p
+                    className="text-[10px] mt-1"
+                    style={{
+                      color: "var(--text-muted)",
+                      fontFamily: "var(--font-mono)",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    ID · {r.githubRepoId}
                   </p>
                 </div>
                 <div className="col-span-2">
                   <StatusPill status={ctx.indexStatus} />
                 </div>
                 <div
-                  className="col-span-2 font-mono text-xs"
-                  style={{ color: "var(--text-secondary)" }}
+                  className="col-span-2 text-xs"
+                  style={{
+                    color: "var(--text-secondary)",
+                    fontFamily: "var(--font-mono)",
+                  }}
                 >
                   {ctx.fileCount}
                 </div>
-                <div className="col-span-3 flex justify-end gap-2">
+                <div className="col-span-3 flex justify-end gap-2 flex-wrap">
                   <button
                     onClick={() => navigate(`/dashboard/repo-health/${r._id}`)}
-                    className="text-[10px] label-mono"
-                    style={{ color: "var(--neon-cyan)" }}
+                    className="hex-btn hex-btn-dark"
+                    style={{ padding: "8px 16px", fontSize: 12 }}
                   >
-                    {"> HEALTH"}
-                  </button>
-                  <button
-                    onClick={() => navigate(`/repos/${r._id}/graph`)}
-                    className="text-[10px] label-mono"
-                    style={{ color: "var(--neon-magenta)" }}
-                  >
-                    {"> GRAPH"}
+                    Health
                   </button>
                   <button
                     onClick={() => reindex(r._id)}
-                    className="text-[10px] label-mono"
-                    style={{ color: "var(--neon-lime)" }}
+                    className="hex-btn hex-btn-ghost"
+                    style={{ padding: "8px 16px", fontSize: 12 }}
                   >
-                    {"> RESYNC"}
+                    Resync
                   </button>
                   <button
                     onClick={() => disconnectRepo(r._id)}
-                    className="text-[10px] label-mono"
-                    style={{ color: "var(--neon-red)" }}
+                    className="text-[11px]"
+                    style={{
+                      color: "var(--red)",
+                      fontFamily: "var(--font-mono)",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      padding: "8px 12px",
+                    }}
                   >
-                    {"> DROP"}
+                    Drop
                   </button>
                 </div>
               </div>
@@ -266,40 +307,40 @@ export default function Repos() {
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0, 0, 0, 0.7)" }}
+          style={{ background: "rgba(26, 31, 46, 0.45)" }}
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="panel w-full max-w-2xl max-h-[80vh] flex flex-col"
+            className="card-light w-full max-w-2xl max-h-[80vh] flex flex-col p-0 fade-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div
               className="px-6 py-4 border-b flex items-center justify-between"
-              style={{ borderColor: "var(--border-default)" }}
+              style={{ borderColor: "var(--border-ink)" }}
             >
               <p
                 className="heading-display text-lg"
-                style={{ color: "var(--neon-cyan)" }}
+                style={{ color: "var(--ink)" }}
               >
-                CONNECT REPOSITORY
+                Connect repository
               </p>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-[10px] label-mono"
+                className="eyebrow"
                 style={{ color: "var(--text-secondary)" }}
               >
-                {"> CLOSE"}
+                CLOSE
               </button>
             </div>
             <div
               className="px-6 py-3 border-b"
-              style={{ borderColor: "var(--border-default)" }}
+              style={{ borderColor: "var(--border-ink)" }}
             >
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="> search owner/repo_"
-                className="input-neon w-full"
+                placeholder="search owner/repo"
+                className="input-light w-full"
               />
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -316,46 +357,65 @@ export default function Repos() {
                       href={installUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-neon"
+                      className="hex-btn hex-btn-green"
                     >
-                      {"> INSTALL GITHUB APP"}
+                      Install GitHub App
                     </a>
                   )}
                 </div>
               ) : availableLoading ? (
-                <p className="p-6 label-mono">{"> SCANNING REPOSITORIES_"}</p>
+                <p
+                  className="p-6 text-sm"
+                  style={{
+                    color: "var(--text-secondary)",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                >
+                  {"> scanning repositories_"}
+                </p>
               ) : (
-                filteredAvailable.map((r) => (
+                filteredAvailable.map((r, idx) => (
                   <div
                     key={r.id}
-                    className="px-6 py-3 border-b flex items-center justify-between text-sm"
-                    style={{ borderColor: "var(--border-default)" }}
+                    className="px-6 py-3 flex items-center justify-between text-sm"
+                    style={{
+                      borderTop:
+                        idx > 0 ? "1px solid var(--border-ink)" : "none",
+                    }}
                   >
                     <div>
                       <p
-                        className="font-mono"
-                        style={{ color: "var(--neon-cyan)" }}
+                        style={{
+                          color: "var(--ink)",
+                          fontFamily: "var(--font-display)",
+                          fontWeight: 600,
+                        }}
                       >
                         {r.fullName}
                       </p>
                       <p
-                        className="text-[10px]"
-                        style={{ color: "var(--text-muted)" }}
+                        className="text-[10px] mt-1"
+                        style={{
+                          color: "var(--text-muted)",
+                          fontFamily: "var(--font-mono)",
+                          letterSpacing: "0.1em",
+                        }}
                       >
                         {r.isPrivate ? "PRIVATE" : "PUBLIC"} ·{" "}
                         {r.language || "—"} · ★ {r.stars}
                       </p>
                     </div>
                     {r.connected ? (
-                      <span className="status-pill" style={{ color: "var(--neon-lime)" }}>
-                        CONNECTED
+                      <span className="status-pill status-pill-ready">
+                        Connected
                       </span>
                     ) : (
                       <button
                         onClick={() => connectRepo(r)}
-                        className="btn-neon"
+                        className="hex-btn hex-btn-green"
+                        style={{ padding: "8px 18px", fontSize: 12 }}
                       >
-                        {"> CONNECT"}
+                        Connect
                       </button>
                     )}
                   </div>

@@ -40,7 +40,11 @@ function parsePatch(patch: string): ParsedLine[] {
     } else if (line.startsWith("+")) {
       result.push({ type: "add", content: line.slice(1), newLine: newLine++ });
     } else if (line.startsWith("-")) {
-      result.push({ type: "remove", content: line.slice(1), oldLine: oldLine++ });
+      result.push({
+        type: "remove",
+        content: line.slice(1),
+        oldLine: oldLine++,
+      });
     } else {
       const content = line.startsWith(" ") ? line.slice(1) : line;
       result.push({
@@ -70,7 +74,9 @@ export default function CommitDiff() {
       .then(({ data }) => {
         const c =
           data.commit ||
-          data.recentPushes?.find((p: CommitData) => p.commitSha === commitSha);
+          data.recentPushes?.find(
+            (p: CommitData) => p.commitSha === commitSha,
+          );
         if (c) {
           setCommit(c);
           if (c.fileDiffs?.length) setSelectedFile(c.fileDiffs[0].filename);
@@ -81,72 +87,129 @@ export default function CommitDiff() {
   }, [repoId, commitSha]);
 
   if (loading) {
-    return <p className="label-mono p-6">{"> LOADING COMMIT_"}</p>;
+    return (
+      <div
+        className="surface-night min-h-screen p-10"
+        style={{ background: "var(--night)" }}
+      >
+        <p
+          className="text-sm"
+          style={{
+            color: "var(--text-on-dark-soft)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          {"> loading commit_"}
+        </p>
+      </div>
+    );
   }
 
   if (!commit) {
-    return <p className="label-mono p-6">{"> COMMIT NOT FOUND"}</p>;
+    return (
+      <div
+        className="surface-night min-h-screen p-10"
+        style={{ background: "var(--night)" }}
+      >
+        <p
+          className="text-sm"
+          style={{
+            color: "var(--text-on-dark-soft)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          {"> commit not found"}
+        </p>
+      </div>
+    );
   }
 
   const sel = commit.fileDiffs.find((f) => f.filename === selectedFile);
-  const totalAdds = commit.fileDiffs.reduce((s, f) => s + (f.additions || 0), 0);
-  const totalDels = commit.fileDiffs.reduce((s, f) => s + (f.deletions || 0), 0);
+  const totalAdds = commit.fileDiffs.reduce(
+    (s, f) => s + (f.additions || 0),
+    0,
+  );
+  const totalDels = commit.fileDiffs.reduce(
+    (s, f) => s + (f.deletions || 0),
+    0,
+  );
   const delta =
     commit.scoreDelta !== undefined
       ? commit.scoreDelta
       : (totalAdds - totalDels) * 0.01;
   const deltaColor =
     delta > 0
-      ? "var(--neon-lime)"
+      ? "var(--green)"
       : delta < 0
-        ? "var(--neon-red)"
-        : "var(--text-secondary)";
+        ? "var(--red)"
+        : "var(--text-on-dark-soft)";
 
   return (
-    <div className="-m-6 md:-m-8 h-[calc(100vh-0px)] flex flex-col overflow-hidden">
+    <div
+      className="surface-night h-screen flex flex-col overflow-hidden"
+      style={{ background: "var(--night)" }}
+    >
       <div
-        className="px-6 py-4 border-b flex items-center justify-between"
+        className="px-6 py-4 flex items-center justify-between flex-wrap gap-4"
         style={{
-          borderColor: "var(--border-default)",
-          background: "var(--bg-panel)",
+          background: "var(--night-2)",
+          borderBottom: "1px solid var(--border-night-2)",
         }}
       >
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 flex-wrap">
           <button
             onClick={() =>
               repoId && /^[a-f0-9]{24}$/i.test(repoId)
                 ? navigate(`/dashboard/repo-health/${repoId}`)
                 : navigate("/dashboard/repos")
             }
-            className="btn-neon"
+            className="hex-btn hex-btn-green"
+            style={{ padding: "8px 18px", fontSize: 12 }}
           >
-            {"< BACK"}
+            ← Back
           </button>
           <div>
-            <p className="label-mono">COMMIT</p>
+            <p className="eyebrow-on-dark">COMMIT</p>
             <p
-              className="font-mono text-sm text-glow-cyan"
-              style={{ color: "var(--neon-cyan)" }}
+              className="text-sm mt-1"
+              style={{
+                color: "var(--green)",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 600,
+              }}
             >
               {commitSha?.slice(0, 12)}
             </p>
           </div>
           <div>
-            <p className="label-mono">PUSHED</p>
+            <p className="eyebrow-on-dark">PUSHED</p>
             <p
-              className="font-mono text-xs"
-              style={{ color: "var(--text-secondary)" }}
+              className="text-xs mt-1"
+              style={{
+                color: "var(--text-on-dark-soft)",
+                fontFamily: "var(--font-mono)",
+              }}
             >
-              {new Date(commit.pushedAt).toISOString().slice(0, 19).replace("T", " ")}
+              {new Date(commit.pushedAt)
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " ")}
             </p>
           </div>
         </div>
 
-        <div className="panel px-4 py-2">
-          <p className="label-mono">SCORE Δ</p>
+        <div
+          className="px-5 py-2"
+          style={{
+            background: "var(--night-3)",
+            border: "1px solid var(--border-night-2)",
+            borderRadius: 2,
+          }}
+        >
+          <p className="eyebrow-on-dark">SCORE Δ</p>
           <p
-            className="heading-display text-lg"
-            style={{ color: deltaColor, textShadow: "0 0 6px currentColor" }}
+            className="heading-display text-xl mt-1"
+            style={{ color: deltaColor }}
           >
             {delta > 0 ? "+" : ""}
             {delta.toFixed(2)}
@@ -156,35 +219,40 @@ export default function CommitDiff() {
 
       <div className="flex-1 flex overflow-hidden">
         <aside
-          className="w-72 overflow-y-auto border-r"
+          className="w-72 overflow-y-auto"
           style={{
-            borderColor: "var(--border-default)",
-            background: "var(--bg-panel)",
+            background: "var(--night-2)",
+            borderRight: "1px solid var(--border-night-2)",
           }}
         >
-          <p className="label-mono p-3">
+          <p className="eyebrow-on-dark p-4">
             CHANGED FILES ({commit.fileDiffs.length})
           </p>
           {commit.fileDiffs.map((f) => (
             <button
               key={f.filename}
               onClick={() => setSelectedFile(f.filename)}
-              className="w-full text-left px-3 py-2 text-xs font-mono transition-colors hover:bg-[rgba(0,240,255,0.05)]"
+              className="w-full text-left px-4 py-3 text-xs transition-colors"
               style={{
                 color:
                   selectedFile === f.filename
-                    ? "var(--neon-cyan)"
-                    : "var(--text-secondary)",
+                    ? "var(--green)"
+                    : "var(--text-on-dark-soft)",
+                background:
+                  selectedFile === f.filename
+                    ? "rgba(0, 217, 127, 0.08)"
+                    : "transparent",
                 borderLeft:
                   selectedFile === f.filename
-                    ? "2px solid var(--neon-cyan)"
+                    ? "2px solid var(--green)"
                     : "2px solid transparent",
+                fontFamily: "var(--font-mono)",
               }}
             >
-              <div className="truncate">{f.filename}</div>
-              <div className="flex gap-3 mt-1 text-[10px]">
-                <span style={{ color: "var(--neon-lime)" }}>+{f.additions}</span>
-                <span style={{ color: "var(--neon-red)" }}>-{f.deletions}</span>
+              <div className="truncate font-semibold">{f.filename}</div>
+              <div className="flex gap-3 mt-1.5" style={{ fontSize: 10 }}>
+                <span style={{ color: "var(--green)" }}>+{f.additions}</span>
+                <span style={{ color: "var(--red)" }}>-{f.deletions}</span>
               </div>
             </button>
           ))}
@@ -192,62 +260,53 @@ export default function CommitDiff() {
 
         <main className="flex-1 overflow-auto">
           {sel?.patch ? (
-            <div className="font-mono text-[11px] leading-relaxed">
+            <div
+              className="text-[12px] leading-relaxed"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
               {parsePatch(sel.patch).map((line, i) => {
-                const bg =
+                const cls =
                   line.type === "add"
-                    ? "rgba(182, 255, 60, 0.06)"
+                    ? "diff-add"
                     : line.type === "remove"
-                      ? "rgba(255, 56, 96, 0.06)"
+                      ? "diff-remove"
                       : line.type === "header"
-                        ? "rgba(0, 240, 255, 0.06)"
-                        : "transparent";
+                        ? "diff-header"
+                        : "";
                 const borderColor =
                   line.type === "add"
-                    ? "var(--neon-lime)"
+                    ? "var(--green)"
                     : line.type === "remove"
-                      ? "var(--neon-red)"
+                      ? "var(--red)"
                       : "transparent";
-                const color =
-                  line.type === "add"
-                    ? "var(--neon-lime)"
-                    : line.type === "remove"
-                      ? "var(--neon-red)"
-                      : line.type === "header"
-                        ? "var(--neon-cyan)"
-                        : "var(--text-primary)";
                 return (
                   <div
                     key={i}
-                    className="flex"
+                    className={`flex ${cls}`}
                     style={{
-                      background: bg,
                       borderLeft: `2px solid ${borderColor}`,
                     }}
                   >
                     <div
                       className="w-12 text-right px-2 select-none"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: "var(--text-on-dark-muted)" }}
                     >
                       {line.oldLine ?? ""}
                     </div>
                     <div
                       className="w-12 text-right px-2 select-none"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: "var(--text-on-dark-muted)" }}
                     >
                       {line.newLine ?? ""}
                     </div>
-                    <div className="w-6 text-center select-none" style={{ color }}>
+                    <div className="w-6 text-center select-none">
                       {line.type === "add"
                         ? "+"
                         : line.type === "remove"
                           ? "-"
                           : ""}
                     </div>
-                    <div
-                      className="flex-1 px-2 whitespace-pre"
-                      style={{ color }}
-                    >
+                    <div className="flex-1 px-2 whitespace-pre">
                       {line.content}
                     </div>
                   </div>
@@ -255,7 +314,15 @@ export default function CommitDiff() {
               })}
             </div>
           ) : (
-            <p className="label-mono p-6">{"> NO DIFF DATA"}</p>
+            <p
+              className="p-6 text-sm"
+              style={{
+                color: "var(--text-on-dark-soft)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {"> no diff data"}
+            </p>
           )}
         </main>
       </div>

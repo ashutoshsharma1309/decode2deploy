@@ -9,28 +9,56 @@ export function HotFileList({ files }: Props) {
   const { repoId } = useParams();
   if (files.length === 0) return null;
   return (
-    <div className="panel p-5">
-      <div className="flex items-center justify-between mb-4">
-        <p className="label-mono">HOTSPOT FILES</p>
-        <p className="text-[10px] label-mono">
-          HIGH CENTRALITY × HIGH CHURN
+    <div className="card-light p-6">
+      <div className="flex items-center justify-between mb-5">
+        <p
+          className="heading-display text-lg"
+          style={{ color: "var(--ink)" }}
+        >
+          Hotspot files
         </p>
+        <p className="eyebrow">HIGH CENTRALITY × HIGH CHURN</p>
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {files.map((f, i) => (
           <div
             key={f}
             onClick={() => repoId && navigate(`/dashboard/repo-health/${repoId}`)}
-            className="flex items-center gap-3 px-3 py-2 text-xs font-mono cursor-pointer hover:bg-[rgba(255,43,214,0.05)] transition-colors"
-            style={{ borderLeft: "2px solid var(--neon-magenta)" }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer transition-colors"
+            style={{
+              borderLeft: "2px solid var(--pink)",
+              background: "rgba(255, 95, 200, 0.06)",
+              borderRadius: 2,
+              fontFamily: "var(--font-mono)",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(255, 95, 200, 0.12)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "rgba(255, 95, 200, 0.06)")
+            }
           >
-            <span style={{ color: "var(--text-muted)", width: 24 }}>
+            <span
+              style={{ color: "var(--text-muted)", width: 28, fontSize: 11 }}
+            >
               {String(i + 1).padStart(2, "0")}
             </span>
-            <span style={{ color: "var(--neon-cyan)" }} className="flex-1 truncate">
+            <span
+              style={{ color: "var(--ink)" }}
+              className="flex-1 truncate"
+            >
               {f}
             </span>
-            <span style={{ color: "var(--neon-magenta)" }}>HOT</span>
+            <span
+              style={{
+                color: "var(--pink)",
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                fontWeight: 600,
+              }}
+            >
+              HOT
+            </span>
           </div>
         ))}
       </div>
